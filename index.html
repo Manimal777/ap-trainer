@@ -66,7 +66,7 @@ td.S{background:rgba(190,170,40,.18)}
 </head>
 <body>
 <div class="wrap">
-<div class="top"><h1>AP TRAINER</h1><span class="mini">Double Down Madness &middot; <b>v4</b></span></div>
+<div class="top"><h1>AP TRAINER</h1><span class="mini">Double Down Madness &middot; <b>v5</b></span></div>
 <div class="tabs">
   <button id="t0" class="on" onclick="tab(0)">Play</button>
   <button id="t1" onclick="tab(1)">Count</button>
@@ -88,7 +88,11 @@ function cardHTML(r,s,hidden,fresh){if(hidden)return '<div class="pc back">?</di
   return `<div class="pc ${RED[s]?'red':''}${fresh?' new':''}">${NAME[r]}${SUIT[s]}</div>`;}
 function tab(i){[0,1,2,3].forEach(j=>{document.getElementById('t'+j).className=j===i?'on':'';
   document.getElementById('p'+j).hidden=j!==i;});
-  if(i===0)newHand(false);if(i===1)renderCount();if(i===2)newHand(true);if(i===3)charts();}
+  if(i===1){renderCount();return;}
+  if(i===3){charts();return;}
+  const want = (i===2);
+  if(H && !H.over && useShoe===want){ render(); return; }   // keep the hand in progress
+  newHand(want);}
 
 /* ---- strategy lookup ---- */
 function correct(cards,up){
@@ -124,6 +128,7 @@ function betFor(tc){return tc>=3?6:tc>=2?4:tc>=1?2:1;}
 /* ---- hand state ---- */
 let H=null;
 function newHand(shoeMode){
+  if(useShoe && pending.length) revealHole();   // never strand a hole card
   useShoe=shoeMode;
   if(useShoe&&(!shoe.length||pos>=shoe.length*0.8333)){newShoe();}
   const bet=useShoe?betFor(trueCount()):1;      // bet BEFORE any card is dealt
