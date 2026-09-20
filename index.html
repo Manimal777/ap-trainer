@@ -66,7 +66,7 @@ td.S{background:rgba(190,170,40,.18)}
 </head>
 <body>
 <div class="wrap">
-<div class="top"><h1>AP TRAINER</h1><span class="mini">Double Down Madness &middot; <b>v2</b></span></div>
+<div class="top"><h1>AP TRAINER</h1><span class="mini">Double Down Madness &middot; <b>v4</b></span></div>
 <div class="tabs">
   <button id="t0" class="on" onclick="tab(0)">Play</button>
   <button id="t1" onclick="tab(1)">Count</button>
@@ -80,7 +80,7 @@ const DDM={"one": ["DDDDDDDDDD", "HHHHHDDHHH", "HHHHHDHHHH", "HHHHHHHHHH", "HHHH
 const SUIT=['\u2660','\u2665','\u2666','\u2663'], RED=[false,true,true,false];
 const NAME=[,'A','2','3','4','5','6','7','8','9','10'];
 const HILO=[0,-1,1,1,1,1,1,0,0,0,-1];
-let S={dec:0,decOK:0,hands:0,units:0,cc:0,cn:0,best:0,streak:0};
+let S={dec:0,decOK:0,hands:0,units:0,cc:0,cn:0,best:0,streak:0,hide:false};
 try{const r=localStorage.getItem('ap_trainer2');if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}
 const save=()=>{try{localStorage.setItem('ap_trainer2',JSON.stringify(S))}catch(e){}};
 const rnd=n=>Math.floor(Math.random()*n);
@@ -102,32 +102,38 @@ function total(cards){let s=cards.reduce((a,b)=>a+b,0),ace=cards.includes(1);
   return (ace&&s+10<=21)?[s+10,true]:[s,false];}
 
 /* ---- shoe ---- */
-let shoe=[],pos=0,rc=0,useShoe=false;
+let shoe=[],pos=0,rc=0,useShoe=false,pending=[];
 function newShoe(){shoe=[];for(let d=0;d<6;d++)for(let r=1;r<=13;r++)for(let s=0;s<4;s++)shoe.push([r>10?10:r,s]);
   for(let i=shoe.length-1;i>0;i--){const j=rnd(i+1);[shoe[i],shoe[j]]=[shoe[j],shoe[i]];}
-  pos=0;rc=0;}
+  pos=0;rc=0;pending=[];}
 function rank(){const r=rnd(13)+1;return r>10?10:r;}
-function deal(){
+function deal(visible){
+  if(visible===undefined)visible=true;
   if(!useShoe) return [rank(), rnd(4)];
-  if(!shoe.length||pos>=shoe.length*0.8333)newShoe();
-  const c=shoe[pos++]; rc+=HILO[c[0]]; return c;
+  if(pos>=shoe.length){ const keep=pending.slice(); newShoe(); pending=keep; }
+  const c=shoe[pos++];
+  if(visible) rc+=HILO[c[0]]; else pending.push(c[0]);
+  return c;
 }
+function revealHole(){ while(pending.length) rc+=HILO[pending.pop()]; }
 function decksLeft(){return useShoe?Math.max((shoe.length-pos)/52,0.25):0;}
-function trueCount(){return useShoe?rc/decksLeft():0;}
+function decksRounded(){return Math.max(Math.round(decksLeft()*2)/2,0.5);}
+function trueCount(){return useShoe?rc/decksRounded():0;}
 function betFor(tc){return tc>=3?6:tc>=2?4:tc>=1?2:1;}
 
 /* ---- hand state ---- */
 let H=null;
 function newHand(shoeMode){
   useShoe=shoeMode;
-  if(useShoe&&(!shoe.length||pos>=shoe.length*0.8333))newShoe();
-  const up=deal(), hole=deal(), first=deal();
-  H={p:[first],dealer:[up,hole],wager:1,done:false,fresh:true,
-     bet:useShoe?betFor(trueCount()):1, msg:'', msgc:'', over:false, askCount:false};
-  // dealer blackjack check
-  const dt=up[0]+hole[0], dace=(up[0]===1||hole[0]===1);
+  if(useShoe&&(!shoe.length||pos>=shoe.length*0.8333)){newShoe();}
+  const bet=useShoe?betFor(trueCount()):1;      // bet BEFORE any card is dealt
+  const up=deal(true), hole=deal(false), first=deal(true);
+  H={p:[first],dealer:[up,hole],wager:1,fresh:true,
+     bet:bet, msg:'', msgc:'', over:false};
   H.dbj = (up[0]===1&&hole[0]===10)||(up[0]===10&&hole[0]===1);
-  const pbj = false;
+  // dealer peeks on a ten or ace: blackjack ends the hand immediately
+  if(H.dbj){ revealHole(); H.over=true; S.hands++; S.units+=-1*H.bet; save();
+    H.msg='Dealer blackjack \u2014 LOSE '+(-1*H.bet).toFixed(1)+'u'; H.msgc='res'; render(); return; }
   render();
 }
 function render(){
@@ -146,8 +152,11 @@ function render(){
      <div class="cards">${H.p.map((c,i)=>cardHTML(c[0],c[1],false,i===H.p.length-1&&H.fresh)).join('')}</div>
      <div class="tot">${one?'first card':(soft?'soft ':'hard ')+t}${t>21?' \u2014 BUST':''}</div>
      <div class="wag">wager ${H.wager}${useShoe?' \u00d7 '+H.bet+'u':''}</div>
-     ${useShoe?`<div class="cnt"><span>RC <b>${rc}</b></span><span>decks <b>${decksLeft().toFixed(1)}</b></span>
-       <span>TC <b>${tc>=0?'+':''}${tc.toFixed(1)}</b></span><span>bet <b>${betFor(tc)}u</b></span></div>`:''}
+     ${useShoe?`<div class="cnt">
+       <span>RC <b>${S.hide?'\u2013':rc}</b></span>
+       <span>decks <b>${decksRounded().toFixed(1)}</b></span>
+       <span>TC <b>${S.hide?'\u2013':(tc>=0?'+':'')+tc.toFixed(1)}</b></span>
+       <span>bet <b>${S.hide?'?':betFor(tc)+'u'}</b></span></div>`:''}
    </div>
    ${H.over?`<div class="row"><button onclick="newHand(${useShoe})">Next hand</button></div>`:
     `<div class="btns">
@@ -161,6 +170,10 @@ function render(){
      <div><div class="k">Correct</div><div class="v">${S.dec?Math.round(100*S.decOK/S.dec):0}%</div></div>
      <div><div class="k">Streak</div><div class="v">${S.streak}</div></div>
      <div><div class="k">Units</div><div class="v">${S.units>=0?'+':''}${S.units.toFixed(1)}</div></div>
+   </div>
+   <div class="row">
+     ${useShoe?`<button class="ghost" onclick="toggleHide()">${S.hide?'Show count':'Hide count'}</button>`:''}
+     <button class="ghost" onclick="resetStats()">Reset stats</button>
    </div></div>
    ${useShoe?`<div class="card"><div class="mini"><b>Ramp:</b> 1u \u00b7 2u at TC +1 \u00b7 4u at TC +2 \u00b7 6u at TC +3.
      <b>Leave</b> at TC \u22123 after 2 decks.</div>
@@ -188,15 +201,15 @@ function act(a){
   H.p.push(deal()); H.fresh=true;
   const [t]=total(H.p.map(x=>x[0]));
   if(t>21){finish();return;}
-  if(lone_ace){finish();return;}      // lone ace gets exactly one card
+  if(lone_ace && a==='D'){finish();return;}   // doubling a lone ace: one card, stop
   render();
 }
 function finish(){
+  revealHole();
   // player blackjack?
   const pc=H.p.map(x=>x[0]);
   const [pt]=total(pc);
   const pbj = H.p.length===2 && pt===21 && pc.includes(1);
-  if(!pbj && H.dbj){ H.over=true; settle(-1); return; }
   if(pbj){ const suited=H.p[0][1]===H.p[1][1];
     H.over=true; settle(H.dbj?0:H.wager*(suited?2:1.5), suited?'suited blackjack 2:1':'blackjack 3:2'); return; }
   if(pt>21){ H.over=true; settle(-H.wager); return; }
@@ -222,6 +235,9 @@ function settle(u,note){
   H.msg=`${note?note+' \u2014 ':''}${w} ${u>0?'+':''}${(u*mult).toFixed(1)}u`;
   H.msgc='res'; render();
 }
+function toggleHide(){ S.hide=!S.hide; save(); if(H) render(); }
+function resetStats(){ if(!confirm('Reset decisions, accuracy, streak and units?'))return;
+  S.dec=0;S.decOK=0;S.hands=0;S.units=0;S.streak=0; save(); if(H) render(); }
 function checkCount(){
   document.getElementById('cq').innerHTML=`<div style="margin-top:8px">
     <input type="number" id="cin" inputmode="numeric" placeholder="running count">
