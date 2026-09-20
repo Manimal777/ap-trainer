@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#14361f">
+<title>AP Trainer</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+ --bg:#f7f6f2;--card:#fff;--ink:#181818;--mut:#6c6c6c;--line:#e2dfd7;--acc:#1f5c3d;--acc2:#8a2f1d;--ok:#166534;--no:#9a2c11;}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#101208;--card:#1b1d14;--ink:#eceadf;--mut:#9b998e;--line:#2f3226;--acc:#79b190;--acc2:#e0906f;--ok:#8fd0a6;--no:#f0a88a;}}
+*{box-sizing:inherit;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+.wrap{max-width:520px;margin:0 auto;padding:10px 12px 26px;min-height:100%;display:flex;flex-direction:column}
+h1{font-size:16px;margin:0;letter-spacing:.02em}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.tabs{display:flex;gap:5px;margin-bottom:12px}
+.tabs button{flex:1;padding:8px 4px;font-size:12px;border-radius:7px;border:1px solid var(--line);background:var(--card);color:var(--mut);font-weight:600}
+.tabs button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:11px}
+.felt{background:linear-gradient(160deg,#1c4a30,#14361f);border-radius:12px;padding:18px 14px;text-align:center;color:#eee8d8;margin-bottom:11px}
+.lab{font-size:10px;text-transform:uppercase;letter-spacing:.1em;opacity:.65;margin-bottom:7px}
+.cards{display:flex;gap:7px;justify-content:center;flex-wrap:wrap}
+.pc{background:#faf8f2;color:#1a1a1a;border-radius:7px;width:44px;height:62px;display:flex;align-items:center;justify-content:center;
+ font-size:21px;font-weight:700;box-shadow:0 2px 5px rgba(0,0,0,.3)}
+.pc.red{color:#a32014}
+.pc.back{background:repeating-linear-gradient(45deg,#7a1d12,#7a1d12 5px,#5e160e 5px,#5e160e 10px);color:transparent}
+.tot{font-size:13px;opacity:.8;margin-top:9px}
+.btns{display:grid;gap:8px;grid-template-columns:repeat(3,1fr)}
+.btns.four{grid-template-columns:repeat(4,1fr)}
+.btns button{padding:15px 4px;font-size:15px;font-weight:700;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.btns button:active{transform:scale(.97)}
+.fb{text-align:center;padding:11px;border-radius:9px;margin-top:11px;font-size:14px;font-weight:600;min-height:44px}
+.fb.ok{background:rgba(22,101,52,.13);color:var(--ok)}
+.fb.no{background:rgba(154,44,17,.13);color:var(--no)}
+.stat{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;text-align:center}
+.stat div{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 3px}
+.stat .k{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut)}
+.stat .v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+input[type=number]{width:100%;padding:13px;font-size:20px;text-align:center;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums}
+.row{display:flex;gap:8px;margin-top:9px}
+.row button{flex:1;padding:13px;font-size:15px;font-weight:700;border-radius:9px;border:none;background:var(--acc);color:#fff}
+.ghost{background:transparent !important;color:var(--mut) !important;border:1px solid var(--line) !important;font-weight:400 !important}
+.speed{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--mut);margin-top:9px}
+.speed input{flex:1}
+.mini{font-size:12px;color:var(--mut);line-height:1.5}
+table{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
+th,td{padding:3px 1px;text-align:center;border:1px solid var(--line)}
+th{background:var(--bg);font-size:9px;color:var(--mut)}
+td.D{background:rgba(31,92,61,.22);font-weight:700}
+td.H{background:rgba(138,47,29,.14)}
+td.S{background:rgba(120,120,120,.14)}
+.flash{font-size:64px;font-weight:800;text-align:center;padding:26px 0;font-variant-numeric:tabular-nums}
+.flash.red{color:#a32014}
+select{width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="top"><h1>AP TRAINER</h1><span class="mini" id="game">Double Down Madness</span></div>
+<div class="tabs">
+  <button id="t0" class="on" onclick="tab(0)">Strategy</button>
+  <button id="t1" onclick="tab(1)">Count</button>
+  <button id="t2" onclick="tab(2)">Combined</button>
+  <button id="t3" onclick="tab(3)">Charts</button>
+</div>
+<div id="p0"></div><div id="p1" hidden></div><div id="p2" hidden></div><div id="p3" hidden></div>
+</div>
+<script>
+const DDM={"one": ["DDDDDDDDDD", "HHHHHDDHHH", "HHHHHDHHHH", "HHHHHHHHHH", "HHHHHHHHHH", "HHHHHHHHHH", "HHHHHHHHHH", "HHHHDDDHHH", "HHDDDDDDHH", "DDDDDDDDDD"], "hard": ["HHHHHDDHHH", "HHHHHDHHHH", "HHHHHHHHHH", "HHHHHHHHHH", "HHHHHHHHHH", "HHHHHHHHHH", "HHHHDDDHHH", "HHDDDDDDHH", "HDDDDDDDDH", "DDDDDDDDDD", "HHHHSSHHHH", "HHSSSSHHHH", "HSSSSSHHHH", "HSSSSSHHHH", "HSSSSSHHHH", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS"], "soft": ["HHDDDDDDHH", "HHHDDDDDHH", "HHHHDDDHHH", "HHHHHDHHHH", "HHHHHDHHHH", "HHHHHDDHHH", "HSSSDDSSHH", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS", "HHHHSSHHHH", "HHSSSSHHHH", "HSSSSSHHHH", "HSSSSSHHHH", "HSSSSSHHHH", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS"]};
+const SUIT=['\u2660','\u2665','\u2666','\u2663'], RED=[false,true,true,false];
+const NAME=[,'A','2','3','4','5','6','7','8','9','10'];
+const HILO=[0,-1,1,1,1,1,1,0,0,0,-1];
+let S={sc:0,sn:0,cc:0,cn:0,best:0};
+try{const r=localStorage.getItem('ap_trainer');if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}
+const save=()=>{try{localStorage.setItem('ap_trainer',JSON.stringify(S))}catch(e){}};
+const rnd=n=>Math.floor(Math.random()*n);
+function drawRank(){const r=rnd(13)+1;return r>10?10:r;}
+function cardHTML(r,s,hidden){if(hidden)return '<div class="pc back">?</div>';
+  return `<div class="pc ${RED[s]?'red':''}">${NAME[r]}${SUIT[s]}</div>`;}
+function tab(i){[0,1,2,3].forEach(j=>{document.getElementById('t'+j).className=j===i?'on':'';
+  document.getElementById('p'+j).hidden=j!==i;});
+  if(i===0)newStrat();if(i===1)newCount();if(i===2)newCombo();if(i===3)charts();}
+
+/* ---------- 1. STRATEGY ---------- */
+let sHand=null;
+function correct(cards,up){
+  if(cards.length===1) return DDM.one[cards[0]-1][up-1];
+  let s=cards.reduce((a,b)=>a+b,0), ace=cards.includes(1);
+  let soft = ace && s+10<=21;
+  let row = soft?DDM.soft[s-2]:DDM.hard[s-2];
+  return row?row[up-1]:'S';
+}
+function total(cards){let s=cards.reduce((a,b)=>a+b,0),ace=cards.includes(1);
+  return (ace&&s+10<=21)?[s+10,true]:[s,false];}
+function newStrat(){
+  const up=drawRank(), ups=rnd(4);
+  let n = Math.random()<0.45?1:(Math.random()<0.7?2:3);
+  let cards=[],suits=[];
+  for(let i=0;i<n;i++){cards.push(drawRank());suits.push(rnd(4));}
+  let [t]=total(cards);
+  if(t>21){return newStrat();}
+  sHand={cards,suits,up,ups};
+  const [tt,soft]=total(cards);
+  document.getElementById('p0').innerHTML=`
+   <div class="felt">
+     <div class="lab">Dealer</div><div class="cards">${cardHTML(up,ups)}${cardHTML(0,0,true)}</div>
+     <div class="lab" style="margin-top:16px">You</div>
+     <div class="cards">${cards.map((c,i)=>cardHTML(c,suits[i])).join('')}</div>
+     <div class="tot">${cards.length===1?'first card':(soft?'soft ':'hard ')+tt}</div>
+   </div>
+   <div class="btns"><button onclick="ans('H')">HIT</button><button onclick="ans('D')">DOUBLE</button>
+   <button onclick="ans('S')" ${cards.length===1?'disabled style="opacity:.35"':''}>STAND</button></div>
+   <div class="fb" id="fb0"></div>
+   <div class="card"><div class="stat">
+     <div><div class="k">Correct</div><div class="v">${S.sc}</div></div>
+     <div><div class="k">Total</div><div class="v">${S.sn}</div></div>
+     <div><div class="k">Accuracy</div><div class="v">${S.sn?Math.round(100*S.sc/S.sn):0}%</div></div>
+     <div><div class="k">Streak</div><div class="v">${S.best}</div></div>
+   </div></div>
+   <p class="mini">DDM: you start with one card and may hit or double at any point. No splits. Dealer pushes on 22.</p>`;
+}
+let streak=0;
+function ans(a){
+  const c=correct(sHand.cards,sHand.up); S.sn++;
+  const fb=document.getElementById('fb0');
+  if(a===c){S.sc++;streak++;if(streak>S.best)S.best=streak;
+    fb.className='fb ok';fb.textContent='Correct \u2014 '+{H:'hit',D:'double',S:'stand'}[c];}
+  else{streak=0;fb.className='fb no';
+    fb.textContent='No \u2014 correct play is '+{H:'HIT',D:'DOUBLE',S:'STAND'}[c];}
+  save();setTimeout(newStrat,a===c?620:1500);
+}
+
+/* ---------- 2. COUNT ---------- */
+let cRun=0,cSeq=[],cTimer=null,cIdx=0,cDealt=0;
+function newCount(){
+  document.getElementById('p1').innerHTML=`
+   <div class="card">
+     <div class="mini">Cards flash one at a time. Keep the Hi-Lo running count, then enter it.</div>
+     <div class="speed"><span>slow</span><input type="range" id="spd" min="250" max="1600" value="800"><span>fast</span></div>
+     <div class="row"><button onclick="startCount(10)">10 cards</button>
+     <button onclick="startCount(26)">26</button><button onclick="startCount(52)">52</button></div>
+   </div>
+   <div id="cArea"></div>
+   <div class="card"><div class="stat">
+     <div><div class="k">Correct</div><div class="v">${S.cc}</div></div>
+     <div><div class="k">Rounds</div><div class="v">${S.cn}</div></div>
+     <div><div class="k">Accuracy</div><div class="v">${S.cn?Math.round(100*S.cc/S.cn):0}%</div></div>
+     <div><div class="k">\u2014</div><div class="v">\u2014</div></div>
+   </div></div>
+   <p class="mini"><b>Hi-Lo:</b> 2\u20136 = +1 &nbsp;\u00b7&nbsp; 7,8,9 = 0 &nbsp;\u00b7&nbsp; 10,J,Q,K,A = \u22121</p>`;
+}
+function startCount(n){
+  const sp=+document.getElementById('spd').value;
+  cSeq=[];cRun=0;cIdx=0;
+  for(let i=0;i<n;i++){const r=drawRank();cSeq.push([r,rnd(4)]);cRun+=HILO[r];}
+  const area=document.getElementById('cArea');
+  area.innerHTML='<div class="felt"><div class="flash" id="fl">\u2013</div></div>';
+  cTimer=setInterval(()=>{
+    if(cIdx>=cSeq.length){clearInterval(cTimer);askCount();return;}
+    const [r,s]=cSeq[cIdx++];
+    const el=document.getElementById('fl');
+    el.className='flash'+(RED[s]?' red':'');
+    el.textContent=NAME[r]+SUIT[s];
+  },sp);
+}
+function askCount(){
+  document.getElementById('cArea').innerHTML=`
+   <div class="card"><div class="lab">Running count?</div>
+   <input type="number" id="cin" inputmode="numeric" autofocus>
+   <div class="row"><button onclick="chkCount()">Check</button></div>
+   <div class="fb" id="fb1"></div></div>`;
+  document.getElementById('cin').focus();
+}
+function chkCount(){
+  const v=parseInt(document.getElementById('cin').value,10);
+  const fb=document.getElementById('fb1');S.cn++;
+  if(v===cRun){S.cc++;fb.className='fb ok';fb.textContent='Correct \u2014 '+cRun;}
+  else{fb.className='fb no';fb.textContent=`No \u2014 the count was ${cRun} (you said ${isNaN(v)?'\u2014':v})`;}
+  save();setTimeout(newCount,1700);
+}
+
+/* ---------- 3. COMBINED ---------- */
+let shoe=[],rc=0,pos=0,kHand=null,askEvery=0,handNo=0;
+function newShoe(){shoe=[];for(let d=0;d<6;d++)for(let r=1;r<=13;r++)for(let s=0;s<4;s++)shoe.push([r>10?10:r,s]);
+  for(let i=shoe.length-1;i>0;i--){const j=rnd(i+1);[shoe[i],shoe[j]]=[shoe[j],shoe[i]];}
+  rc=0;pos=0;handNo=0;}
+function newCombo(){
+  if(!shoe.length||pos>shoe.length*0.8)newShoe();
+  const up=shoe[pos++],ph=[shoe[pos++]];
+  rc+=HILO[up[0]]+HILO[ph[0][0]];
+  handNo++;
+  kHand={cards:ph.map(c=>c[0]),suits:ph.map(c=>c[1]),up:up[0],ups:up[1]};
+  const decks=Math.max((shoe.length-pos)/52,.5), tc=rc/decks;
+  const ask = handNo%5===0;
+  document.getElementById('p2').innerHTML=`
+   <div class="felt">
+     <div class="lab">Dealer</div><div class="cards">${cardHTML(up[0],up[1])}${cardHTML(0,0,true)}</div>
+     <div class="lab" style="margin-top:16px">You</div>
+     <div class="cards">${cardHTML(ph[0][0],ph[0][1])}</div>
+     <div class="tot">${Math.round(shoe.length-pos)} cards left \u00b7 ${decks.toFixed(1)} decks</div>
+   </div>
+   <div class="btns"><button onclick="kAns('H')">HIT</button><button onclick="kAns('D')">DOUBLE</button>
+   <button onclick="kAns('S')" disabled style="opacity:.35">STAND</button></div>
+   <div class="fb" id="fb2"></div>
+   ${ask?`<div class="card"><div class="lab">Running count check</div>
+     <input type="number" id="kin" inputmode="numeric">
+     <div class="row"><button onclick="kChk()">Check count</button>
+     <button class="ghost" onclick="newCombo()">Skip</button></div>
+     <div class="fb" id="fb3"></div></div>`:''}
+   <div class="card"><div class="mini"><b>Bet ramp:</b> 1 unit \u00b7 2u at TC +1 \u00b7 4u at TC +2 \u00b7 6u at TC +3 \u00b7
+   <b>leave</b> at TC \u22123 after 2 decks.</div></div>`;
+}
+function kAns(a){
+  const c=correct(kHand.cards,kHand.up);
+  const fb=document.getElementById('fb2');
+  if(a===c){fb.className='fb ok';fb.textContent='Correct';}
+  else{fb.className='fb no';fb.textContent='No \u2014 '+{H:'HIT',D:'DOUBLE',S:'STAND'}[c];}
+  // burn a few cards for the rest of the round
+  const n=2+rnd(3);
+  for(let i=0;i<n&&pos<shoe.length;i++){rc+=HILO[shoe[pos][0]];pos++;}
+  setTimeout(newCombo,a===c?700:1500);
+}
+function kChk(){
+  const v=parseInt(document.getElementById('kin').value,10);
+  const fb=document.getElementById('fb3');
+  const decks=Math.max((shoe.length-pos)/52,.5);
+  if(v===rc){fb.className='fb ok';fb.textContent=`Correct \u2014 RC ${rc}, TC ${(rc/decks).toFixed(1)}`;}
+  else{fb.className='fb no';fb.textContent=`No \u2014 RC is ${rc} (TC ${(rc/decks).toFixed(1)})`;}
+}
+
+/* ---------- 4. CHARTS ---------- */
+function charts(){
+  const hdr='<tr><th></th>'+[1,2,3,4,5,6,7,8,9,10].map(u=>`<th>${u===1?'A':u}</th>`).join('')+'</tr>';
+  let one='<table>'+hdr;
+  for(let s=1;s<=10;s++){one+=`<tr><th>${s===1?'A':s}</th>`+
+    DDM.one[s-1].split('').map(a=>`<td class="${a}">${a}</td>`).join('')+'</tr>';}
+  one+='</table>';
+  let hard='<table>'+hdr;
+  for(let s=5;s<=20;s++){hard+=`<tr><th>${s}</th>`+
+    DDM.hard[s-2].split('').map(a=>`<td class="${a}">${a}</td>`).join('')+'</tr>';}
+  hard+='</table>';
+  let soft='<table>'+hdr;
+  for(let s=2;s<=10;s++){soft+=`<tr><th>A,${s-1===0?'A':s-1}</th>`+
+    DDM.soft[s-2].split('').map(a=>`<td class="${a}">${a}</td>`).join('')+'</tr>';}
+  soft+='</table>';
+  document.getElementById('p3').innerHTML=`
+   <div class="card"><div class="lab">First card (you hold one)</div>${one}</div>
+   <div class="card"><div class="lab">Hard totals</div>${hard}</div>
+   <div class="card"><div class="lab">Soft totals</div>${soft}</div>
+   <div class="card"><div class="mini">
+     <b>Count:</b> Hi-Lo. 2\u20136 = +1, 7\u20139 = 0, 10\u2013A = \u22121. True count = running \u00f7 decks remaining.<br><br>
+     <b>Screen the table first:</b> shoe not CSM \u00b7 suited blackjack must pay 2:1 (V1).
+     A CSM table loses; V2/V3 pay 0.69 u/100 instead of 3.11.<br><br>
+     <b>Add to home screen:</b> Chrome menu \u2192 Add to Home screen.
+   </div></div>`;
+}
+tab(0);
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
