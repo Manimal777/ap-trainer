@@ -58,15 +58,25 @@ th{background:var(--bg);font-size:9px;color:var(--mut)}
 td.D{background:rgba(31,92,61,.25);font-weight:700}
 td.H{background:rgba(190,80,50,.15)}
 td.S{background:rgba(190,170,40,.18)}
-.flash{font-size:60px;font-weight:800;text-align:center;padding:22px 0;font-variant-numeric:tabular-nums}
-.flash.red{color:#e0705c}
+.flash{display:flex;justify-content:center;align-items:center;min-height:210px}
+.big{position:relative;width:128px;height:180px;background:#faf8f2;border-radius:12px;color:#1a1a1a;
+ box-shadow:0 4px 12px rgba(0,0,0,.45);font-weight:700;animation:pop .16s ease-out}
+.big.red{color:#b3261a}
+.big .c1{position:absolute;top:8px;left:10px;font-size:22px;line-height:1.05;text-align:center}
+.big .c2{position:absolute;bottom:8px;right:10px;font-size:22px;line-height:1.05;text-align:center;transform:rotate(180deg)}
+.big .mid{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:64px}
+.big.blank{background:transparent;box-shadow:none;animation:none}
+.banner{margin:0 0 10px;padding:9px 12px;border-radius:9px;font-size:13px;font-weight:700;text-align:center;letter-spacing:.03em}
+.banner.new{background:rgba(31,92,61,.18);color:var(--ok)}
+.banner.cut{background:rgba(176,125,42,.2);color:var(--gold)}
+.banner.soft{background:rgba(90,110,180,.18);color:var(--ink)}
 .cnt{display:flex;justify-content:space-around;font-size:12px;color:var(--mut);margin-top:6px}
 .cnt b{color:var(--ink);font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
 <div class="wrap">
-<div class="top"><h1>AP TRAINER</h1><span class="mini">Double Down Madness &middot; <b>v5</b></span></div>
+<div class="top"><h1>AP TRAINER</h1><span class="mini">Double Down Madness &middot; <b>v6</b></span></div>
 <div class="tabs">
   <button id="t0" class="on" onclick="tab(0)">Play</button>
   <button id="t1" onclick="tab(1)">Count</button>
@@ -80,7 +90,7 @@ const DDM={"one": ["DDDDDDDDDD", "HHHHHDDHHH", "HHHHHDHHHH", "HHHHHHHHHH", "HHHH
 const SUIT=['\u2660','\u2665','\u2666','\u2663'], RED=[false,true,true,false];
 const NAME=[,'A','2','3','4','5','6','7','8','9','10'];
 const HILO=[0,-1,1,1,1,1,1,0,0,0,-1];
-let S={dec:0,decOK:0,hands:0,units:0,cc:0,cn:0,best:0,streak:0,hide:false};
+let S={dec:0,decOK:0,hands:0,units:0,cc:0,cn:0,best:0,streak:0,hide:false,soft:false};
 try{const r=localStorage.getItem('ap_trainer2');if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}
 const save=()=>{try{localStorage.setItem('ap_trainer2',JSON.stringify(S))}catch(e){}};
 const rnd=n=>Math.floor(Math.random()*n);
@@ -106,10 +116,12 @@ function total(cards){let s=cards.reduce((a,b)=>a+b,0),ace=cards.includes(1);
   return (ace&&s+10<=21)?[s+10,true]:[s,false];}
 
 /* ---- shoe ---- */
-let shoe=[],pos=0,rc=0,useShoe=false,pending=[];
+let shoe=[],pos=0,rc=0,useShoe=false,pending=[],handInShoe=0;
+const CUT=0.8333;
+function cutReached(){return shoe.length>0 && pos>=shoe.length*CUT;}
 function newShoe(){shoe=[];for(let d=0;d<6;d++)for(let r=1;r<=13;r++)for(let s=0;s<4;s++)shoe.push([r>10?10:r,s]);
   for(let i=shoe.length-1;i>0;i--){const j=rnd(i+1);[shoe[i],shoe[j]]=[shoe[j],shoe[i]];}
-  pos=0;rc=0;pending=[];}
+  pos=0;rc=0;pending=[];handInShoe=0;}
 function rank(){const r=rnd(13)+1;return r>10?10:r;}
 function deal(visible){
   if(visible===undefined)visible=true;
@@ -130,14 +142,19 @@ let H=null;
 function newHand(shoeMode){
   if(useShoe && pending.length) revealHole();   // never strand a hole card
   useShoe=shoeMode;
-  if(useShoe&&(!shoe.length||pos>=shoe.length*0.8333)){newShoe();}
+  if(useShoe&&(!shoe.length||cutReached())){newShoe();}
+  if(useShoe) handInShoe++;
   const bet=useShoe?betFor(trueCount()):1;      // bet BEFORE any card is dealt
-  const up=deal(true), hole=deal(false), first=deal(true);
+  const up=deal(true), hole=deal(false);
+  let first=deal(true);
+  const drill = !useShoe && S.soft;
+  if(drill){ first=[2+rnd(8), rnd(4)]; }          // 2..9, so an ace makes a real soft hand
+
   H={p:[first],dealer:[up,hole],wager:1,fresh:true,
-     bet:bet, msg:'', msgc:'', over:false};
+     bet:bet, msg:'', msgc:'', over:false, forceAce:drill};
   H.dbj = (up[0]===1&&hole[0]===10)||(up[0]===10&&hole[0]===1);
   // dealer peeks on a ten or ace: blackjack ends the hand immediately
-  if(H.dbj){ revealHole(); H.over=true; S.hands++; S.units+=-1*H.bet; save();
+  if(H.dbj){ revealHole(); H.over=true; if(!(!useShoe && S.soft)){ S.hands++; S.units+=-1*H.bet; } save();
     H.msg='Dealer blackjack \u2014 LOSE '+(-1*H.bet).toFixed(1)+'u'; H.msgc='res'; render(); return; }
   render();
 }
@@ -147,7 +164,12 @@ function render(){
   const one=H.p.length===1;
   const lone_ace = one && H.p[0][0]===1;
   const tc=trueCount();
-  document.getElementById(p).innerHTML=`
+  const cutOut = useShoe && cutReached();
+  let banner='';
+  if(useShoe && handInShoe===1 && !H.over) banner='<div class="banner new">NEW SHOE \u2014 running count starts at 0</div>';
+  else if(cutOut) banner='<div class="banner cut">CUT CARD OUT \u2014 last hand of this shoe</div>';
+  else if(!useShoe && S.soft) banner='<div class="banner soft">SOFT DRILL \u2014 your next card is an ace</div>';
+  document.getElementById(p).innerHTML=`${banner}
    <div class="felt">
      <div class="lab">Dealer</div>
      <div class="cards">${cardHTML(H.dealer[0][0],H.dealer[0][1])}${
@@ -163,7 +185,7 @@ function render(){
        <span>TC <b>${S.hide?'\u2013':(tc>=0?'+':'')+tc.toFixed(1)}</b></span>
        <span>bet <b>${S.hide?'?':betFor(tc)+'u'}</b></span></div>`:''}
    </div>
-   ${H.over?`<div class="row"><button onclick="newHand(${useShoe})">Next hand</button></div>`:
+   ${H.over?`<div class="row"><button onclick="newHand(${useShoe})">${cutOut?'Shuffle \u2014 new shoe':'Next hand'}</button></div>`:
     `<div class="btns">
       <button onclick="act('H')" ${lone_ace?'':''}>HIT</button>
       <button onclick="act('D')">DOUBLE</button>
@@ -177,11 +199,13 @@ function render(){
      <div><div class="k">Units</div><div class="v">${S.units>=0?'+':''}${S.units.toFixed(1)}</div></div>
    </div>
    <div class="row">
-     ${useShoe?`<button class="ghost" onclick="toggleHide()">${S.hide?'Show count':'Hide count'}</button>`:''}
+     ${useShoe?`<button class="ghost" onclick="toggleHide()">${S.hide?'Show count':'Hide count'}</button>
+       <button class="ghost" onclick="resetShoe()">Reset shoe</button>`:
+       `<button class="ghost" onclick="toggleSoft()">Soft drill: ${S.soft?'ON':'OFF'}</button>`}
      <button class="ghost" onclick="resetStats()">Reset stats</button>
    </div></div>
    ${useShoe?`<div class="card"><div class="mini"><b>Ramp:</b> 1u \u00b7 2u at TC +1 \u00b7 4u at TC +2 \u00b7 6u at TC +3.
-     <b>Leave</b> at TC \u22123 after 2 decks.</div>
+     <b>Leave</b> at TC \u22123 after 2 decks.<br>Hand ${handInShoe} of this shoe \u00b7 ${Math.round(100*pos/shoe.length)}% dealt (cut at 83%).</div>
      <div class="row"><button class="ghost" onclick="checkCount()">Check my count</button></div>
      <div id="cq"></div></div>`:''}`;
   H.fresh=false;
@@ -203,7 +227,8 @@ function act(a){
   const one=H.p.length===1, lone_ace = one && H.p[0][0]===1;
   if(a==='S'){finish();return;}
   if(a==='D')H.wager*=2;
-  H.p.push(deal()); H.fresh=true;
+  if(H.forceAce){ H.p.push([1,rnd(4)]); H.forceAce=false; } else H.p.push(deal());
+  H.fresh=true;
   const [t]=total(H.p.map(x=>x[0]));
   if(t>21){finish();return;}
   if(lone_ace && a==='D'){finish();return;}   // doubling a lone ace: one card, stop
@@ -235,12 +260,16 @@ function finish(){
 }
 function settle(u,note){
   const mult = useShoe?H.bet:1;
-  S.hands++; S.units+=u*mult; save();
+  if(!(!useShoe && S.soft)){ S.hands++; S.units+=u*mult; }
+  save();
   const w = u>0?'WIN':(u<0?'LOSE':'PUSH');
   H.msg=`${note?note+' \u2014 ':''}${w} ${u>0?'+':''}${(u*mult).toFixed(1)}u`;
   H.msgc='res'; render();
 }
 function toggleHide(){ S.hide=!S.hide; save(); if(H) render(); }
+function toggleSoft(){ S.soft=!S.soft; save(); newHand(false); }
+function resetShoe(){ if(!confirm('Shuffle a fresh shoe? The count resets to 0.'))return;
+  newShoe(); H=null; newHand(true); }
 function resetStats(){ if(!confirm('Reset decisions, accuracy, streak and units?'))return;
   S.dec=0;S.decOK=0;S.hands=0;S.units=0;S.streak=0; save(); if(H) render(); }
 function checkCount(){
@@ -259,7 +288,7 @@ function cChk(){
 let cRun=0,cSeq=[],cTimer=null,cIdx=0;
 function renderCount(){
   document.getElementById('p1').innerHTML=`
-   <div class="card"><div class="mini">Cards flash one at a time. Keep the Hi-Lo running count.</div>
+   <div class="card"><div class="mini">Cards flash one at a time. Keep the Hi-Lo running count. Tens show as 10, J, Q or K.</div>
      <div class="speed"><span>slow</span><input type="range" id="spd" min="220" max="1500" value="750"><span>fast</span></div>
      <div class="row"><button onclick="startCount(10)">10</button><button onclick="startCount(26)">26</button>
      <button onclick="startCount(52)">52</button></div></div>
@@ -275,13 +304,20 @@ function renderCount(){
 function startCount(n){
   const sp=+document.getElementById('spd').value;
   cSeq=[];cRun=0;cIdx=0;
-  for(let i=0;i<n;i++){const r=rank();cSeq.push([r,rnd(4)]);cRun+=HILO[r];}
-  document.getElementById('cArea').innerHTML='<div class="felt"><div class="flash" id="fl">\u2013</div></div>';
+  const FACE=['10','J','Q','K'];
+  for(let i=0;i<n;i++){const r=rank();cSeq.push([r,rnd(4),r===10?FACE[rnd(4)]:NAME[r]]);cRun+=HILO[r];}
+  document.getElementById('cArea').innerHTML='<div class="felt"><div class="flash" id="fl"><div class="big blank"></div></div><div class="tot" id="fln"></div></div>';
   cTimer=setInterval(()=>{
     if(cIdx>=cSeq.length){clearInterval(cTimer);askCount();return;}
-    const [r,s]=cSeq[cIdx++],el=document.getElementById('fl');
-    el.className='flash'+(RED[s]?' red':'');el.textContent=NAME[r]+SUIT[s];
+    const [r,s,lab]=cSeq[cIdx++];
+    document.getElementById('fl').innerHTML=bigCard(lab,s);   // re-render so repeats still animate
+    document.getElementById('fln').textContent=cIdx+' / '+cSeq.length;
   },sp);
+}
+function bigCard(lab,s){
+  const su=SUIT[s];
+  return `<div class="big ${RED[s]?'red':''}"><div class="c1">${lab}<br>${su}</div>
+    <div class="mid">${su}</div><div class="c2">${lab}<br>${su}</div></div>`;
 }
 function askCount(){
   document.getElementById('cArea').innerHTML=`<div class="card"><div class="lab">Running count?</div>
