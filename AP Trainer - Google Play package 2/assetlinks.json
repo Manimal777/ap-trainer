@@ -1,8 +1,0 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "io.github.manimal777.twa",
-        "sha256_cert_fingerprints": ["7D:50:68:E5:74:8B:E0:1D:5A:3B:15:95:7E:63:24:21:F8:B2:36:50:C6:66:E5:2D:EE:C4:BB:46:6E:69:2C:FC"]
-      }
-    }]
