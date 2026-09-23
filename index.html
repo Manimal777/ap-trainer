@@ -58,6 +58,10 @@ th{background:var(--bg);font-size:9px;color:var(--mut)}
 td.D{background:rgba(31,92,61,.25);font-weight:700}
 td.H{background:rgba(190,80,50,.15)}
 td.S{background:rgba(190,170,40,.18)}
+td.P{background:rgba(60,140,90,.22);font-weight:700}
+td.R{background:rgba(255,255,255,.22);font-weight:700}
+#gsel{background:transparent;color:inherit;border:1px solid rgba(255,255,255,.25);border-radius:6px;font:inherit;padding:2px 4px}
+.hand{padding:4px 6px;border-radius:8px;margin:2px 0}.hand.cur{outline:2px solid rgba(255,215,90,.6)}
 .flash{display:flex;justify-content:center;align-items:center;min-height:210px}
 .big{position:relative;width:128px;height:180px;background:#faf8f2;border-radius:12px;color:#1a1a1a;
  box-shadow:0 4px 12px rgba(0,0,0,.45);font-weight:700;animation:pop .16s ease-out}
@@ -76,7 +80,7 @@ td.S{background:rgba(190,170,40,.18)}
 </head>
 <body>
 <div class="wrap">
-<div class="top"><h1>AP TRAINER</h1><span class="mini">Double Down Madness &middot; <b>v6</b></span></div>
+<div class="top"><h1>AP TRAINER</h1><span class="mini"><select id="gsel" onchange="setGame(this.value)"><option value="ddm">Double Down Madness</option><option value="da">Double Attack</option></select> &middot; <b>v7</b></span></div>
 <div class="tabs">
   <button id="t0" class="on" onclick="tab(0)">Play</button>
   <button id="t1" onclick="tab(1)">Count</button>
@@ -90,12 +94,19 @@ const DDM={"one": ["DDDDDDDDDD", "HHHHHDDHHH", "HHHHHDHHHH", "HHHHHHHHHH", "HHHH
 const SUIT=['\u2660','\u2665','\u2666','\u2663'], RED=[false,true,true,false];
 const NAME=[,'A','2','3','4','5','6','7','8','9','10'];
 const HILO=[0,-1,1,1,1,1,1,0,0,0,-1];
+const DA_TAGS=[0,-1,1,2,2,2,2,0,-1,-1,-2];
+const GAMES={
+  ddm:{key:'ddm',name:'Double Down Madness',decks:6,spanish:false,div:52,tags:HILO,count:'Hi-Lo',
+       legend:'2\u20136 = +1 &nbsp;\u00b7&nbsp; 7,8,9 = 0 &nbsp;\u00b7&nbsp; 10\u2013A = \u22121'},
+  da:{key:'da',name:'Double Attack',decks:8,spanish:true,div:48,tags:DA_TAGS,count:'Double Attack L2',
+       legend:'A = \u22121 &nbsp;\u00b7&nbsp; 2 = +1 &nbsp;\u00b7&nbsp; 3\u20136 = +2 &nbsp;\u00b7&nbsp; 7 = 0 &nbsp;\u00b7&nbsp; 8, 9 = \u22121 &nbsp;\u00b7&nbsp; J/Q/K = \u22122 &nbsp;(no tens in a Spanish deck)'}};
+function GM(){return GAMES[S.game]||GAMES.ddm;}
 let S={dec:0,decOK:0,hands:0,units:0,cc:0,cn:0,best:0,streak:0,hide:false,soft:false};
 try{const r=localStorage.getItem('ap_trainer2');if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}
 const save=()=>{try{localStorage.setItem('ap_trainer2',JSON.stringify(S))}catch(e){}};
 const rnd=n=>Math.floor(Math.random()*n);
-function cardHTML(r,s,hidden,fresh){if(hidden)return '<div class="pc back">?</div>';
-  return `<div class="pc ${RED[s]?'red':''}${fresh?' new':''}">${NAME[r]}${SUIT[s]}</div>`;}
+function cardHTML(r,s,hidden,fresh,lab){if(hidden)return '<div class="pc back">?</div>';
+  return `<div class="pc ${RED[s]?'red':''}${fresh?' new':''}">${lab||NAME[r]}${SUIT[s]}</div>`;}
 function tab(i){[0,1,2,3].forEach(j=>{document.getElementById('t'+j).className=j===i?'on':'';
   document.getElementById('p'+j).hidden=j!==i;});
   if(i===1){renderCount();return;}
@@ -119,7 +130,9 @@ function total(cards){let s=cards.reduce((a,b)=>a+b,0),ace=cards.includes(1);
 let shoe=[],pos=0,rc=0,useShoe=false,pending=[],handInShoe=0;
 const CUT=0.8333;
 function cutReached(){return shoe.length>0 && pos>=shoe.length*CUT;}
-function newShoe(){shoe=[];for(let d=0;d<6;d++)for(let r=1;r<=13;r++)for(let s=0;s<4;s++)shoe.push([r>10?10:r,s]);
+function newShoe(){const g=GM();shoe=[];
+  for(let d=0;d<g.decks;d++)for(let r=1;r<=13;r++){ if(g.spanish&&r===10) continue;
+    for(let s=0;s<4;s++) shoe.push([r>10?10:r,s, r>10?['J','Q','K'][r-11]:NAME[r]]); }
   for(let i=shoe.length-1;i>0;i--){const j=rnd(i+1);[shoe[i],shoe[j]]=[shoe[j],shoe[i]];}
   pos=0;rc=0;pending=[];handInShoe=0;}
 function rank(){const r=rnd(13)+1;return r>10?10:r;}
@@ -128,11 +141,11 @@ function deal(visible){
   if(!useShoe) return [rank(), rnd(4)];
   if(pos>=shoe.length){ const keep=pending.slice(); newShoe(); pending=keep; }
   const c=shoe[pos++];
-  if(visible) rc+=HILO[c[0]]; else pending.push(c[0]);
+  if(visible) rc+=GM().tags[c[0]]; else pending.push(c[0]);
   return c;
 }
-function revealHole(){ while(pending.length) rc+=HILO[pending.pop()]; }
-function decksLeft(){return useShoe?Math.max((shoe.length-pos)/52,0.25):0;}
+function revealHole(){ while(pending.length) rc+=GM().tags[pending.pop()]; }
+function decksLeft(){return useShoe?Math.max((shoe.length-pos)/GM().div,0.25):0;}
 function decksRounded(){return Math.max(Math.round(decksLeft()*2)/2,0.5);}
 function trueCount(){return useShoe?rc/decksRounded():0;}
 function betFor(tc){return tc>=3?6:tc>=2?4:tc>=1?2:1;}
@@ -140,6 +153,7 @@ function betFor(tc){return tc>=3?6:tc>=2?4:tc>=1?2:1;}
 /* ---- hand state ---- */
 let H=null;
 function newHand(shoeMode){
+  if(S.game==='da') return daNewHand(shoeMode);
   if(useShoe && pending.length) revealHole();   // never strand a hole card
   useShoe=shoeMode;
   if(useShoe&&(!shoe.length||cutReached())){newShoe();}
@@ -159,6 +173,7 @@ function newHand(shoeMode){
   render();
 }
 function render(){
+  if(S.game==='da') return daRender();
   const p=useShoe?'p2':'p0';
   const [t,soft]=total(H.p.map(c=>c[0]));
   const one=H.p.length===1;
@@ -288,7 +303,7 @@ function cChk(){
 let cRun=0,cSeq=[],cTimer=null,cIdx=0;
 function renderCount(){
   document.getElementById('p1').innerHTML=`
-   <div class="card"><div class="mini">Cards flash one at a time. Keep the Hi-Lo running count. Tens show as 10, J, Q or K.</div>
+   <div class="card"><div class="mini">Cards flash one at a time. Keep the ${GM().count} running count.${GM().spanish?' Spanish deck \u2014 no tens.':' Tens show as 10, J, Q or K.'}</div>
      <div class="speed"><span>slow</span><input type="range" id="spd" min="220" max="1500" value="750"><span>fast</span></div>
      <div class="row"><button onclick="startCount(10)">10</button><button onclick="startCount(26)">26</button>
      <button onclick="startCount(52)">52</button></div></div>
@@ -299,13 +314,13 @@ function renderCount(){
      <div><div class="k">Accuracy</div><div class="v">${S.cn?Math.round(100*S.cc/S.cn):0}%</div></div>
      <div><div class="k">Best run</div><div class="v">${S.best}</div></div>
    </div></div>
-   <p class="mini"><b>Hi-Lo:</b> 2\u20136 = +1 &nbsp;\u00b7&nbsp; 7,8,9 = 0 &nbsp;\u00b7&nbsp; 10\u2013A = \u22121</p>`;
+   <p class="mini"><b>${GM().count}:</b> ${GM().legend}</p>`;
 }
 function startCount(n){
   const sp=+document.getElementById('spd').value;
   cSeq=[];cRun=0;cIdx=0;
   const FACE=['10','J','Q','K'];
-  for(let i=0;i<n;i++){const r=rank();cSeq.push([r,rnd(4),r===10?FACE[rnd(4)]:NAME[r]]);cRun+=HILO[r];}
+  for(let i=0;i<n;i++){const c=gameCard();cSeq.push(c);cRun+=GM().tags[c[0]];}
   document.getElementById('cArea').innerHTML='<div class="felt"><div class="flash" id="fl"><div class="big blank"></div></div><div class="tot" id="fln"></div></div>';
   cTimer=setInterval(()=>{
     if(cIdx>=cSeq.length){clearInterval(cTimer);askCount();return;}
@@ -332,8 +347,203 @@ function qChk(){
   save();setTimeout(renderCount,1600);
 }
 
+/* ================= GAME SWITCHING ================= */
+function gameCard(){ const g=GM(); const r=g.spanish?[1,2,3,4,5,6,7,8,9,11,12,13][rnd(12)]:rnd(13)+1;
+  return [r>10?10:r, rnd(4), r>10?['J','Q','K'][r-11]:NAME[r]]; }
+function setGame(g){ S.game=g; save(); shoe=[]; pos=0; rc=0; pending=[]; H=null; handInShoe=0;
+  let cur=0; for(let j=0;j<4;j++) if(!document.getElementById('p'+j).hidden) cur=j;
+  tab(cur); }
+
+/* ================= DOUBLE ATTACK ================= */
+/* Wizard of Odds chart, upcards 2..10, A */
+const DA={
+ hard:{9:'HHHHDHHHHH',10:'DDDDDDDHHH',11:'DDDDDDDDDD',12:'HHHHHHHHHH',13:'HHHHHHHHHH',
+       14:'HHSSSHHHHH',15:'SSSSSHHHHH',16:'SSSSSHHHHH',17:'SSSSSSSSSR'},
+ soft:{13:'HHHHHHHHHH',14:'HHHHHHHHHH',15:'HHHHHHHHHH',16:'HHHHDHHHHH',17:'HHDDDHHHHH',18:'SSSDDSSHHH'},
+ pair:{1:'PPPPPPPPPP',2:'HPPPPPHHHH',3:'HPPPPPPHHH',4:'HHHHHHHHHH',5:'DDDDDDDHHH',
+       6:'HHPPPHHHHH',7:'PPPPPPHHHH',8:'PPPPPPPPPP',9:'SSPPPSPPSS',10:'SSSSSSSSSS'}};
+/* top-10 deviations (L2 true count) plus the two negative-index hits */
+const DA_DEV=[[16,10,'R',2.5,'+'],[16,1,'R',2.5,'+'],[16,9,'R',5,'+'],[15,10,'R',6,'+'],[15,1,'R',6,'+'],
+  [14,3,'S',1,'+'],[13,5,'S',2,'+'],[13,6,'S',4.5,'+'],[14,2,'S',4.5,'+'],[13,4,'S',5.5,'+'],
+  [14,4,'H',-1.5,'-'],[14,6,'H',-2.5,'-']];
+const ANAME={H:'Hit',S:'Stand',D:'Double',R:'Surrender',P:'Split'};
+const upIdx=u=>u===1?9:u-2;
+function daTotal(cs){let t=cs.reduce((a,c)=>a+c[0],0),ace=cs.some(c=>c[0]===1);return (ace&&t+10<=21)?[t+10,true]:[t,false];}
+function daBet(tc){return tc>=4?6:tc>=2.5?4:tc>=1.5?2:1;}
+function isBJ(cs){return cs.length===2&&((cs[0][0]===1&&cs[1][0]===10)||(cs[0][0]===10&&cs[1][0]===1));}
+function daCanSplit(h){const v=h.c.map(c=>c[0]);return h.c.length===2&&v[0]===v[1]&&H.hands.length<4&&!h.splitAces;}
+function daAttackCorrect(up,tc){ if(up<2||up>8) return false; if(up===2&&useShoe&&tc<=-0.5) return false; return true; }
+function daRescueCorrect(t,up){ return (t<=16&&(up>=8||up===1))||(t===17&&up===1); }
+function daCorrect(h,up,tc){
+  if(daCanSplit(h)){ const a=DA.pair[h.c[0][0]][upIdx(up)]; if(a==='P') return 'P'; }
+  const [t,soft]=daTotal(h.c); let a;
+  if(soft) a = t>=19?'S':(DA.soft[t]?DA.soft[t][upIdx(up)]:'H');
+  else     a = t>=18?'S':(t<=8?'H':DA.hard[t][upIdx(up)]);
+  if(!soft&&useShoe) for(const [T,U,A,I,D] of DA_DEV)
+     if(T===t&&U===up&&((D==='+'&&tc>=I)||(D==='-'&&tc<=I))) a=A;
+  if(a==='D'&&h.dbl) a='H';
+  return a;
+}
+function daDeal(visible){
+  if(useShoe) return deal(visible);
+  return gameCard();                       /* practice: random Spanish card */
+}
+function daScore(ok,want){ S.dec++; if(ok){S.decOK++;S.streak++;H.fb='\u2713 '+want;H.fbc='ok';}
+  else{S.streak=0;H.fb='\u2717 correct play: '+want;H.fbc='no';} save(); }
+
+function daNewHand(shoeMode){
+  if(useShoe&&pending.length) revealHole();
+  useShoe=shoeMode;
+  if(useShoe&&(!shoe.length||cutReached())) newShoe();
+  if(useShoe) handInShoe++;
+  const tc=trueCount(), B=useShoe?daBet(tc):1;          /* bet before any card is dealt */
+  const up=daDeal(true);
+  H={game:'da',phase:'attack',B,raised:false,up,hole:null,dealer:[up],hands:[],cur:0,
+     msg:'',msgc:'',fb:'',fbc:'',over:false,open:false};
+  daRender();
+}
+function daAttack(raise){
+  const want=daAttackCorrect(H.up[0],trueCount());
+  daScore(raise===want, want?'Raise':'No raise');
+  H.raised=raise;
+  const p1=daDeal(true), p2=daDeal(true); H.hole=daDeal(false); H.dealer=[H.up,H.hole];
+  H.hands=[{c:[p1,p2],dbl:false,done:false,res:null,splitAces:false}];
+  H.phase='play';
+  const pbj=isBJ([p1,p2]), dbj=isBJ(H.dealer);
+  if(pbj||dbj){ revealHole(); H.open=true;
+    const stake=H.B*(raise?2:1), u=(pbj&&dbj)?0:(pbj?stake:-stake);
+    return daSettle(u,(pbj&&dbj)?'Both blackjack \u2014 push':pbj?'Blackjack \u2014 pays even money':'Dealer blackjack'); }
+  daRender();
+}
+function daAct(a){
+  const h=H.hands[H.cur], want=daCorrect(h,H.up[0],trueCount());
+  if(a==='P'&&!daCanSplit(h)) return;
+  daScore(a===want, ANAME[want]);
+  if(a==='S'){ h.done=true; return daNext(); }
+  if(a==='R'){ h.done=true; h.res='surr'; return daNext(); }
+  if(a==='H'){ h.c.push(daDeal(true)); const t=daTotal(h.c)[0];
+    if(t>21){h.done=true;h.res='bust';return daNext();}
+    if(t===21){h.done=true;return daNext();}
+    return daRender(); }
+  if(a==='D'){ h.dbl=true; h.c.push(daDeal(true));
+    if(daTotal(h.c)[0]>21){h.done=true;h.res='bust';return daNext();}
+    H.phase='rescue'; return daRender(); }
+  if(a==='P'){ const aces=h.c[0][0]===1;
+    const h2={c:[h.c[1]],dbl:false,done:false,res:null,splitAces:aces};
+    h.c=[h.c[0]]; h.splitAces=aces;
+    h.c.push(daDeal(true)); h2.c.push(daDeal(true));
+    H.hands.splice(H.cur+1,0,h2);
+    if(aces){ h.done=true; h2.done=true; return daNext(); }
+    return daRender(); }
+}
+function daRescue(surr){
+  const h=H.hands[H.cur], want=daRescueCorrect(daTotal(h.c)[0],H.up[0]);
+  daScore(surr===want, want?'Surrender (rescue)':'Stand');
+  h.done=true; if(surr) h.res='surr'; H.phase='play'; daNext();
+}
+function daNext(){
+  while(H.cur<H.hands.length&&H.hands[H.cur].done) H.cur++;
+  if(H.cur<H.hands.length){ H.phase='play'; return daRender(); }
+  daFinish();
+}
+function daFinish(){
+  revealHole(); H.open=true;
+  const live=H.hands.some(h=>h.res!=='bust'&&h.res!=='surr');
+  if(live) while(daTotal(H.dealer)[0]<17) H.dealer.push(daDeal(true));   /* S17 */
+  const dt=daTotal(H.dealer)[0], dbust=dt>21, stake=H.B*(H.raised?2:1);
+  let u=0; const parts=[];
+  for(const h of H.hands){ const w=stake*(h.dbl?2:1);
+    if(h.res==='surr'){u-=w/2;parts.push('surrender');continue;}
+    if(h.res==='bust'){u-=w;parts.push('bust');continue;}
+    const pt=daTotal(h.c)[0];
+    if(dbust||pt>dt){u+=w;parts.push('win');} else if(pt<dt){u-=w;parts.push('lose');} else parts.push('push');
+  }
+  daSettle(u, parts.join(' \u00b7 ')+(live?(dbust?' \u2014 dealer busts':' \u2014 dealer '+dt):''));
+}
+function daSettle(u,note){
+  H.over=true; H.phase='over'; S.hands++; S.units+=u; save();
+  H.msg=note+' \u2192 '+(u>=0?'+':'')+u.toFixed(1)+'u'; H.msgc='res'; daRender();
+}
+function daRender(){
+  const p=useShoe?'p2':'p0', tc=trueCount(), cutOut=useShoe&&cutReached();
+  let banner='';
+  if(useShoe&&handInShoe===1&&!H.over) banner='<div class="banner new">NEW SHOE \u2014 running count starts at 0</div>';
+  else if(cutOut) banner='<div class="banner cut">CUT CARD OUT \u2014 last hand of this shoe</div>';
+  const dcards=H.open?H.dealer.map(c=>cardHTML(c[0],c[1],false,false,c[2])).join('')
+                     :cardHTML(H.up[0],H.up[1],false,false,H.up[2])+(H.hole?cardHTML(0,0,true):'');
+  let hands='';
+  H.hands.forEach((h,i)=>{ const [t,soft]=daTotal(h.c);
+    hands+=`<div class="hand ${i===H.cur&&!H.over&&H.hands.length>1?'cur':''}"><div class="cards">${h.c.map(c=>cardHTML(c[0],c[1],false,false,c[2])).join('')}</div>
+      <div class="tot">${soft?'soft ':'hard '}${t}${h.dbl?' \u00b7 doubled':''}${h.res==='surr'?' \u00b7 surrendered':h.res==='bust'?' \u2014 BUST':''}</div></div>`;});
+  let btns='';
+  if(H.phase==='attack') btns=`<div class="btns"><button onclick="daAttack(true)">RAISE</button><button onclick="daAttack(false)">NO RAISE</button></div>`;
+  else if(H.phase==='play'){ const h=H.hands[H.cur];
+    btns=`<div class="btns"><button onclick="daAct('H')">HIT</button><button onclick="daAct('S')">STAND</button>
+      <button onclick="daAct('D')" ${h.dbl?'disabled':''}>DOUBLE</button></div>
+      <div class="btns"><button onclick="daAct('R')">SURRENDER</button>${daCanSplit(h)?`<button onclick="daAct('P')">SPLIT</button>`:''}</div>`; }
+  else if(H.phase==='rescue') btns=`<div class="btns"><button onclick="daRescue(true)">SURRENDER</button><button onclick="daRescue(false)">STAND</button></div>
+      <div class="mini" style="text-align:center">You doubled \u2014 stand, or surrender half the doubled bet?</div>`;
+  else btns=`<div class="row"><button onclick="newHand(${useShoe})">${cutOut?'Shuffle \u2014 new shoe':'Next hand'}</button></div>`;
+  const stage=H.phase==='attack'?'Attack: raise up to your ante after seeing the upcard?':'';
+  document.getElementById(p).innerHTML=`${banner}
+   <div class="felt">
+     <div class="lab">Dealer${H.open?' ('+daTotal(H.dealer)[0]+')':''}</div>
+     <div class="cards">${dcards}</div>
+     <div class="lab" style="margin-top:14px">You</div>
+     ${hands||`<div class="mini">${stage}</div>`}
+     <div class="wag">ante ${H.B}u${H.raised?' + raise '+H.B+'u':''}</div>
+     ${useShoe?`<div class="cnt">
+       <span>RC <b>${S.hide?'\u2013':rc}</b></span>
+       <span>decks <b>${decksRounded().toFixed(1)}</b></span>
+       <span>TC <b>${S.hide?'\u2013':(tc>=0?'+':'')+tc.toFixed(1)}</b></span>
+       <span>bet <b>${S.hide?'?':daBet(tc)+'u'}</b></span></div>`:''}
+   </div>
+   ${btns}
+   <div class="fb ${H.fbc||''}">${H.fb||'&nbsp;'}</div>
+   ${H.msg?`<div class="fb ${H.msgc}">${H.msg}</div>`:''}
+   <div class="card"><div class="stat">
+     <div><div class="k">Decisions</div><div class="v">${S.dec}</div></div>
+     <div><div class="k">Correct</div><div class="v">${S.dec?Math.round(100*S.decOK/S.dec):0}%</div></div>
+     <div><div class="k">Streak</div><div class="v">${S.streak}</div></div>
+     <div><div class="k">Units</div><div class="v">${S.units>=0?'+':''}${S.units.toFixed(1)}</div></div>
+   </div>
+   <div class="row">
+     ${useShoe?`<button class="ghost" onclick="toggleHide()">${S.hide?'Show count':'Hide count'}</button>
+       <button class="ghost" onclick="resetShoe()">Reset shoe</button>`:''}
+     <button class="ghost" onclick="resetStats()">Reset stats</button>
+   </div></div>
+   ${useShoe?`<div class="card"><div class="mini"><b>Count:</b> A \u22121 \u00b7 2 +1 \u00b7 3\u20136 +2 \u00b7 7 0 \u00b7 8, 9 \u22121 \u00b7 J/Q/K \u22122. True count \u00f7 48-card decks.<br>
+     <b>Ramp:</b> 1u \u00b7 2u at TC +1.5 \u00b7 4u at +2.5 \u00b7 6u at +4. <b>Leave</b> at TC \u22121.5 after 2 decks.<br>
+     Hand ${handInShoe} of this shoe \u00b7 ${Math.round(100*pos/shoe.length)}% dealt (cut at 83%).</div>
+     <div class="row"><button class="ghost" onclick="checkCount()">Check my count</button></div>
+     <div id="cq"></div></div>`:`<div class="card"><div class="mini">Practice: basic strategy only (true count 0). Use the Shoe tab to train deviations.</div></div>`}`;
+}
+function daCharts(){
+  const hdr='<tr><th></th>'+[2,3,4,5,6,7,8,9,10,'A'].map(u=>`<th>${u}</th>`).join('')+'</tr>';
+  const row=(lab,str)=>`<tr><th>${lab}</th>`+str.split('').map(a=>`<td class="${a}">${a}</td>`).join('')+'</tr>';
+  let hard='<table>'+hdr+row('4\u20138','HHHHHHHHHH');
+  for(let t=9;t<=17;t++) hard+=row(t,DA.hard[t]);
+  hard+=row('18+','SSSSSSSSSS')+'</table>';
+  let soft='<table>'+hdr; for(let t=13;t<=18;t++) soft+=row('A'+(t-11),DA.soft[t]);
+  soft+=row('19+','SSSSSSSSSS')+'</table>';
+  let pr='<table>'+hdr; for(const v of [2,3,4,5,6,7,8,9,10,1]) pr+=row((v===1?'A':v)+','+(v===1?'A':v),DA.pair[v]);
+  pr+='</table>';
+  let dv='<table><tr><th>Hand</th><th>vs</th><th>Play</th><th>Index</th></tr>'+
+    DA_DEV.map(([t,u,a,i])=>`<tr><td>hard ${t}</td><td>${u===1?'A':u}</td><td class="${a}">${ANAME[a]}</td><td>${i>0?'+':''}${i}</td></tr>`).join('')+'</table>';
+  document.getElementById('p3').innerHTML=`
+   <div class="card"><div class="lab">Attack</div><div class="mini">Raise the <b>full</b> amount on dealer <b>2 through 8</b>. Never on 9, 10 or A.
+     Only count change: skip the raise on a dealer 2 at TC \u2264 \u22120.5.</div></div>
+   <div class="card"><div class="lab">Hard totals</div>${hard}<div class="mini">R = surrender. Double and surrender are allowed on any number of cards.</div></div>
+   <div class="card"><div class="lab">Soft totals</div>${soft}</div>
+   <div class="card"><div class="lab">Pairs</div>${pr}<div class="mini">Resplit to 4 hands; aces receive one card each.</div></div>
+   <div class="card"><div class="lab">Rescue \u2014 after doubling</div><div class="mini">Surrender any total of <b>16 or less vs 8, 9, 10 or A</b>, and <b>17 vs A</b>. Otherwise stand.</div></div>
+   <div class="card"><div class="lab">Deviations (L2 true count)</div>${dv}
+     <div class="mini">+ = at or above the index \u00b7 negative = at or below. Worth ~72% of all deviation value.</div></div>`;
+}
+
 /* ---- CHARTS ---- */
 function charts(){
+  if(S.game==='da') return daCharts();
   const hdr='<tr><th></th>'+[2,3,4,5,6,7,8,9,10,'A'].map(u=>`<th>${u}</th>`).join('')+'</tr>';
   const reorder=s=>s.slice(1)+s[0];
   let one='<table>'+hdr;
@@ -360,6 +570,7 @@ function charts(){
      <b>Reset stats:</b> <a href="#" onclick="if(confirm('Reset all stats?')){localStorage.removeItem('ap_trainer2');location.reload()}return false">tap here</a>
    </div></div>`;
 }
+try{document.getElementById('gsel').value=GM().key;}catch(e){}
 tab(0);
 </script>
 </body>
