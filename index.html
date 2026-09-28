@@ -42,7 +42,7 @@ h1{font-size:15px;margin:0;letter-spacing:.04em}
 .fb.no{background:rgba(154,44,17,.13);color:var(--no)}
 .fb.res{background:rgba(120,120,120,.12);color:var(--ink)}
 .stat{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
-.stat div{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 2px}
+.stat>div{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 2px}
 .stat .k{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
 .stat .v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
 input[type=number]{width:100%;padding:12px;font-size:19px;text-align:center;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums}
@@ -76,18 +76,33 @@ td.R{background:rgba(255,255,255,.22);font-weight:700}
 .banner.soft{background:rgba(90,110,180,.18);color:var(--ink)}
 .cnt{display:flex;justify-content:space-around;font-size:12px;color:var(--mut);margin-top:6px}
 .cnt b{color:var(--ink);font-variant-numeric:tabular-nums}
+.stat.s3{grid-template-columns:repeat(3,1fr)}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:6px}
+.bar>i{display:block;height:100%;background:var(--acc)}
+.viz{--s1:#2a78d6;--s2:#eb6834;--grid:#e6e3db}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .viz{--s1:#3987e5;--s2:#d95926;--grid:#2f3226}}
+.viz svg{width:100%;height:auto;display:block;touch-action:none}
+.viz .leg{display:flex;gap:14px;font-size:12px;color:var(--mut);margin:2px 0 6px;flex-wrap:wrap}
+.viz .leg span{display:flex;align-items:center;gap:5px}
+.viz .sw{width:16px;height:0;border-top:2px solid var(--s1)}
+.viz .sw.d{border-top:2px dashed var(--s2)}
+.viz .sw.b{height:9px;border:none;background:var(--s2);opacity:.16}
+.viz .tip{font-size:12px;color:var(--ink);min-height:18px;text-align:center;font-variant-numeric:tabular-nums}
+.log td,.log th{font-size:11px}
+td.good{color:var(--ok);font-weight:700} td.bad{color:var(--no);font-weight:700}
 </style>
 </head>
 <body>
 <div class="wrap">
-<div class="top"><h1>AP TRAINER</h1><span class="mini"><select id="gsel" onchange="setGame(this.value)"><option value="ddm">Double Down Madness</option><option value="da">Double Attack</option></select> &middot; <b>v7</b></span></div>
+<div class="top"><h1>AP TRAINER</h1><span class="mini"><select id="gsel" onchange="setGame(this.value)"><option value="ddm">Double Down Madness</option><option value="da">Double Attack</option></select> &middot; <b>v8</b></span></div>
 <div class="tabs">
   <button id="t0" class="on" onclick="tab(0)">Play</button>
   <button id="t1" onclick="tab(1)">Count</button>
   <button id="t2" onclick="tab(2)">Shoe</button>
   <button id="t3" onclick="tab(3)">Charts</button>
+  <button id="t4" onclick="tab(4)">Stats</button>
 </div>
-<div id="p0"></div><div id="p1" hidden></div><div id="p2" hidden></div><div id="p3" hidden></div>
+<div id="p0"></div><div id="p1" hidden></div><div id="p2" hidden></div><div id="p3" hidden></div><div id="p4" hidden></div>
 </div>
 <script>
 const DDM={"one": ["DDDDDDDDDD", "HHHHHDDHHH", "HHHHHDHHHH", "HHHHHHHHHH", "HHHHHHHHHH", "HHHHHHHHHH", "HHHHHHHHHH", "HHHHDDDHHH", "HHDDDDDDHH", "DDDDDDDDDD"], "hard": ["HHHHHDDHHH", "HHHHHDHHHH", "HHHHHHHHHH", "HHHHHHHHHH", "HHHHHHHHHH", "HHHHHHHHHH", "HHHHDDDHHH", "HHDDDDDDHH", "HDDDDDDDDH", "DDDDDDDDDD", "HHHHSSHHHH", "HHSSSSHHHH", "HSSSSSHHHH", "HSSSSSHHHH", "HSSSSSHHHH", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS"], "soft": ["HHDDDDDDHH", "HHHDDDDDHH", "HHHHDDDHHH", "HHHHHDHHHH", "HHHHHDHHHH", "HHHHHDDHHH", "HSSSDDSSHH", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS", "HHHHSSHHHH", "HHSSSSHHHH", "HSSSSSHHHH", "HSSSSSHHHH", "HSSSSSHHHH", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS"]};
@@ -96,21 +111,42 @@ const NAME=[,'A','2','3','4','5','6','7','8','9','10'];
 const HILO=[0,-1,1,1,1,1,1,0,0,0,-1];
 const DA_TAGS=[0,-1,1,2,2,2,2,0,-1,-1,-2];
 const GAMES={
-  ddm:{key:'ddm',name:'Double Down Madness',decks:6,spanish:false,div:52,tags:HILO,count:'Hi-Lo',
+  ddm:{key:'ddm',name:'Double Down Madness',decks:6,spanish:false,div:52,tags:HILO,count:'Hi-Lo',n0:20378,sd:1.8,
+       edge:tc=>{const T=[[-3,-4.20],[-2,-3.20],[-1,-1.92],[0,-0.75],[1,0.29],[2,1.57]];
+         if(tc<=-3) return -4.20+1.0*(tc+3); if(tc>=2) return 1.57+1.4*(tc-2);
+         for(let i=0;i<T.length-1;i++) if(tc<=T[i+1][0]){const [a,x]=T[i],[b,y]=T[i+1];return x+(y-x)*(tc-a)/(b-a);} },
        legend:'2\u20136 = +1 &nbsp;\u00b7&nbsp; 7,8,9 = 0 &nbsp;\u00b7&nbsp; 10\u2013A = \u22121'},
-  da:{key:'da',name:'Double Attack',decks:8,spanish:true,div:48,tags:DA_TAGS,count:'Double Attack L2',
+  da:{key:'da',name:'Double Attack',decks:8,spanish:true,div:48,tags:DA_TAGS,count:'Double Attack L2',n0:19000,sd:1.8,
+       edge:tc=>-0.62+0.63*tc,
        legend:'A = \u22121 &nbsp;\u00b7&nbsp; 2 = +1 &nbsp;\u00b7&nbsp; 3\u20136 = +2 &nbsp;\u00b7&nbsp; 7 = 0 &nbsp;\u00b7&nbsp; 8, 9 = \u22121 &nbsp;\u00b7&nbsp; J/Q/K = \u22122 &nbsp;(no tens in a Spanish deck)'}};
 function GM(){return GAMES[S.game]||GAMES.ddm;}
-let S={dec:0,decOK:0,hands:0,units:0,cc:0,cn:0,best:0,streak:0,hide:false,soft:false};
+const blankG=()=>({dec:0,decOK:0,hands:0,units:0,cc:0,cn:0,best:0,streak:0,
+  shoes:0,shoeHands:0,shoeUnits:0,ev:0,vr:0,hist:[],rcLog:[]});
+let S={game:'ddm',hide:false,soft:false,g:{}};
 try{const r=localStorage.getItem('ap_trainer2');if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}
+/* v7 kept one combined set of stats: move it into the game that was selected */
+if(S.dec!==undefined&&!S.migrated){const k=S.game||'ddm';S.g[k]=Object.assign(blankG(),S.g[k]||{});
+  for(const f of ['dec','decOK','hands','units','cc','cn','best','streak']){S.g[k][f]=(S[f]||0);delete S[f];}
+  S.migrated=true;}
+function G(){const k=S.game||'ddm'; let g=S.g[k]; if(!g) g=S.g[k]=blankG();
+  else if(g._v!==8){const b=blankG(); for(const f in b) if(g[f]===undefined) g[f]=b[f];}
+  g._v=8; return g;}
 const save=()=>{try{localStorage.setItem('ap_trainer2',JSON.stringify(S))}catch(e){}};
 const rnd=n=>Math.floor(Math.random()*n);
+/* one shoe-mode hand: actual units, bet in units, true count when the bet went out */
+function recordShoeHand(actual,bet,tc){
+  const g=G(), m=GM(); g.shoeHands++; g.shoeUnits+=actual;
+  g.ev+=bet*m.edge(tc)/100; g.vr+=(m.sd*bet)**2;
+  g.hist.push([g.shoeHands,+g.shoeUnits.toFixed(2),+g.ev.toFixed(3),+g.vr.toFixed(1)]);
+  if(g.hist.length>2400) g.hist=g.hist.filter((_,i)=>i%2===0||i===g.hist.length-1);
+}
 function cardHTML(r,s,hidden,fresh,lab){if(hidden)return '<div class="pc back">?</div>';
   return `<div class="pc ${RED[s]?'red':''}${fresh?' new':''}">${lab||NAME[r]}${SUIT[s]}</div>`;}
-function tab(i){[0,1,2,3].forEach(j=>{document.getElementById('t'+j).className=j===i?'on':'';
+function tab(i){[0,1,2,3,4].forEach(j=>{document.getElementById('t'+j).className=j===i?'on':'';
   document.getElementById('p'+j).hidden=j!==i;});
   if(i===1){renderCount();return;}
   if(i===3){charts();return;}
+  if(i===4){renderStats();return;}
   const want = (i===2);
   if(H && !H.over && useShoe===want){ render(); return; }   // keep the hand in progress
   newHand(want);}
@@ -122,6 +158,20 @@ function correct(cards,up){
   let soft = ace && s+10<=21;
   let row = soft?DDM.soft[s-2]:DDM.hard[s-2];
   return row?row[up-1]:'S';
+}
+/* DDM top-10 deviations (Hi-Lo true count, at or above the index). L = lone first card, H = hard total */
+const DDM_DEV=[['L',4,6,'D',0],['L',5,6,'D',1],['L',7,6,'D',1],['L',2,5,'D',1],['L',6,6,'D',1.5],['L',3,5,'D',1.5],
+  ['H',10,1,'D',1.5],['H',12,4,'S',2.5],['H',8,4,'D',2.5],['L',8,4,'D',2.5]];
+function ddmCorrect(cards,up,tc){
+  let a=correct(cards,up);
+  if(!useShoe) return a;
+  const [t,soft]=total(cards), lone=cards.length===1;
+  for(const [k,v,u,act,i] of DDM_DEV){
+    if(u!==up||tc<i) continue;
+    if(k==='L'&&lone&&cards[0]===v) a=act;
+    if(k==='H'&&!lone&&!soft&&t===v) a=act;
+  }
+  return a;
 }
 function total(cards){let s=cards.reduce((a,b)=>a+b,0),ace=cards.includes(1);
   return (ace&&s+10<=21)?[s+10,true]:[s,false];}
@@ -158,17 +208,17 @@ function newHand(shoeMode){
   useShoe=shoeMode;
   if(useShoe&&(!shoe.length||cutReached())){newShoe();}
   if(useShoe) handInShoe++;
-  const bet=useShoe?betFor(trueCount()):1;      // bet BEFORE any card is dealt
+  const tcBet=useShoe?trueCount():0, bet=useShoe?betFor(tcBet):1;      // bet BEFORE any card is dealt
   const up=deal(true), hole=deal(false);
   let first=deal(true);
   const drill = !useShoe && S.soft;
   if(drill){ first=[2+rnd(8), rnd(4)]; }          // 2..9, so an ace makes a real soft hand
 
-  H={p:[first],dealer:[up,hole],wager:1,fresh:true,
+  H={p:[first],dealer:[up,hole],wager:1,fresh:true,tc0:tcBet,
      bet:bet, msg:'', msgc:'', over:false, forceAce:drill};
   H.dbj = (up[0]===1&&hole[0]===10)||(up[0]===10&&hole[0]===1);
   // dealer peeks on a ten or ace: blackjack ends the hand immediately
-  if(H.dbj){ revealHole(); H.over=true; if(!(!useShoe && S.soft)){ S.hands++; S.units+=-1*H.bet; } save();
+  if(H.dbj){ revealHole(); H.over=true; if(!(!useShoe && S.soft)){ G().hands++; G().units+=-1*H.bet; if(useShoe) recordShoeHand(-H.bet,H.bet,H.tc0); } save();
     H.msg='Dealer blackjack \u2014 LOSE '+(-1*H.bet).toFixed(1)+'u'; H.msgc='res'; render(); return; }
   render();
 }
@@ -200,7 +250,7 @@ function render(){
        <span>TC <b>${S.hide?'\u2013':(tc>=0?'+':'')+tc.toFixed(1)}</b></span>
        <span>bet <b>${S.hide?'?':betFor(tc)+'u'}</b></span></div>`:''}
    </div>
-   ${H.over?`<div class="row"><button onclick="newHand(${useShoe})">${cutOut?'Shuffle \u2014 new shoe':'Next hand'}</button></div>`:
+   ${H.over?(cutOut?endShoeBox():`<div class="row"><button onclick="newHand(${useShoe})">Next hand</button></div>`):
     `<div class="btns">
       <button onclick="act('H')" ${lone_ace?'':''}>HIT</button>
       <button onclick="act('D')">DOUBLE</button>
@@ -208,10 +258,10 @@ function render(){
     </div>`}
    <div class="fb ${H.msgc}">${H.msg||'&nbsp;'}</div>
    <div class="card"><div class="stat">
-     <div><div class="k">Decisions</div><div class="v">${S.dec}</div></div>
-     <div><div class="k">Correct</div><div class="v">${S.dec?Math.round(100*S.decOK/S.dec):0}%</div></div>
-     <div><div class="k">Streak</div><div class="v">${S.streak}</div></div>
-     <div><div class="k">Units</div><div class="v">${S.units>=0?'+':''}${S.units.toFixed(1)}</div></div>
+     <div><div class="k">Decisions</div><div class="v">${G().dec}</div></div>
+     <div><div class="k">Correct</div><div class="v">${G().dec?Math.round(100*G().decOK/G().dec):0}%</div></div>
+     <div><div class="k">Streak</div><div class="v">${G().streak}</div></div>
+     <div><div class="k">Units</div><div class="v">${G().units>=0?'+':''}${G().units.toFixed(1)}</div></div>
    </div>
    <div class="row">
      ${useShoe?`<button class="ghost" onclick="toggleHide()">${S.hide?'Show count':'Hide count'}</button>
@@ -233,11 +283,11 @@ function dealerText(){
   return 'dealer '+t;
 }
 function act(a){
-  const c=correct(H.p.map(x=>x[0]),H.dealer[0][0]);
-  S.dec++;
-  if(a===c){S.decOK++;S.streak++;if(S.streak>S.best)S.best=S.streak;
+  const c=ddmCorrect(H.p.map(x=>x[0]),H.dealer[0][0],trueCount());
+  G().dec++;
+  if(a===c){G().decOK++;G().streak++;if(G().streak>G().best)G().best=G().streak;
     H.msg='Correct \u2014 '+{H:'hit',D:'double',S:'stand'}[c];H.msgc='ok';}
-  else{S.streak=0;H.msg='Correct play was '+{H:'HIT',D:'DOUBLE',S:'STAND'}[c];H.msgc='no';}
+  else{G().streak=0;H.msg='Correct play was '+{H:'HIT',D:'DOUBLE',S:'STAND'}[c];H.msgc='no';}
   save();
   const one=H.p.length===1, lone_ace = one && H.p[0][0]===1;
   if(a==='S'){finish();return;}
@@ -275,18 +325,36 @@ function finish(){
 }
 function settle(u,note){
   const mult = useShoe?H.bet:1;
-  if(!(!useShoe && S.soft)){ S.hands++; S.units+=u*mult; }
+  if(!(!useShoe && S.soft)){ G().hands++; G().units+=u*mult; if(useShoe) recordShoeHand(u*mult,H.bet,H.tc0); }
   save();
   const w = u>0?'WIN':(u<0?'LOSE':'PUSH');
   H.msg=`${note?note+' \u2014 ':''}${w} ${u>0?'+':''}${(u*mult).toFixed(1)}u`;
   H.msgc='res'; render();
+}
+/* ---- end of shoe: enter the final running count before shuffling ---- */
+function endShoeBox(){
+  if(H.rcDone) return `<div class="fb ${H.rcOk?'ok':'no'}">${H.rcMsg}</div>
+    <div class="row"><button onclick="newHand(true)">Shuffle \u2014 new shoe</button></div>`;
+  return `<div class="card"><div class="lab">End of shoe \u2014 final running count?</div>
+    <input type="number" id="rcin" inputmode="numeric" placeholder="running count" onkeydown="if(event.key==='Enter')submitShoeRC()">
+    <div class="row"><button onclick="submitShoeRC()">Record count</button></div>
+    <div class="mini">Recorded for every shoe \u2014 see the Stats tab.</div></div>`;
+}
+function submitShoeRC(){
+  const el=document.getElementById('rcin'), v=parseInt(el&&el.value,10);
+  if(isNaN(v)){ el&&el.focus(); return; }
+  const g=G(); g.shoes++; g.rcLog.push([g.shoes,v,rc,Date.now()]);
+  if(g.rcLog.length>500) g.rcLog.shift();
+  H.rcDone=true; H.rcOk=(v===rc);
+  H.rcMsg=H.rcOk?`Correct \u2014 final count ${rc}. Shoe ${g.shoes} recorded.`:`You said ${v}; it was ${rc} (off by ${v-rc>0?'+':''}${v-rc}). Shoe ${g.shoes} recorded.`;
+  save(); (S.game==='da'?daRender:render)();
 }
 function toggleHide(){ S.hide=!S.hide; save(); if(H) render(); }
 function toggleSoft(){ S.soft=!S.soft; save(); newHand(false); }
 function resetShoe(){ if(!confirm('Shuffle a fresh shoe? The count resets to 0.'))return;
   newShoe(); H=null; newHand(true); }
 function resetStats(){ if(!confirm('Reset decisions, accuracy, streak and units?'))return;
-  S.dec=0;S.decOK=0;S.hands=0;S.units=0;S.streak=0; save(); if(H) render(); }
+  G().dec=0;G().decOK=0;G().hands=0;G().units=0;G().streak=0; save(); if(H) render(); }
 function checkCount(){
   document.getElementById('cq').innerHTML=`<div style="margin-top:8px">
     <input type="number" id="cin" inputmode="numeric" placeholder="running count">
@@ -309,10 +377,10 @@ function renderCount(){
      <button onclick="startCount(52)">52</button></div></div>
    <div id="cArea"></div>
    <div class="card"><div class="stat">
-     <div><div class="k">Correct</div><div class="v">${S.cc}</div></div>
-     <div><div class="k">Rounds</div><div class="v">${S.cn}</div></div>
-     <div><div class="k">Accuracy</div><div class="v">${S.cn?Math.round(100*S.cc/S.cn):0}%</div></div>
-     <div><div class="k">Best run</div><div class="v">${S.best}</div></div>
+     <div><div class="k">Correct</div><div class="v">${G().cc}</div></div>
+     <div><div class="k">Rounds</div><div class="v">${G().cn}</div></div>
+     <div><div class="k">Accuracy</div><div class="v">${G().cn?Math.round(100*G().cc/G().cn):0}%</div></div>
+     <div><div class="k">Best run</div><div class="v">${G().best}</div></div>
    </div></div>
    <p class="mini"><b>${GM().count}:</b> ${GM().legend}</p>`;
 }
@@ -341,8 +409,8 @@ function askCount(){
   document.getElementById('qin').focus();
 }
 function qChk(){
-  const v=parseInt(document.getElementById('qin').value,10),fb=document.getElementById('qfb');S.cn++;
-  if(v===cRun){S.cc++;fb.className='fb ok';fb.textContent='Correct \u2014 '+cRun;}
+  const v=parseInt(document.getElementById('qin').value,10),fb=document.getElementById('qfb');G().cn++;
+  if(v===cRun){G().cc++;fb.className='fb ok';fb.textContent='Correct \u2014 '+cRun;}
   else{fb.className='fb no';fb.textContent=`No \u2014 the count was ${cRun}`;}
   save();setTimeout(renderCount,1600);
 }
@@ -350,8 +418,8 @@ function qChk(){
 /* ================= GAME SWITCHING ================= */
 function gameCard(){ const g=GM(); const r=g.spanish?[1,2,3,4,5,6,7,8,9,11,12,13][rnd(12)]:rnd(13)+1;
   return [r>10?10:r, rnd(4), r>10?['J','Q','K'][r-11]:NAME[r]]; }
-function setGame(g){ S.game=g; save(); shoe=[]; pos=0; rc=0; pending=[]; H=null; handInShoe=0;
-  let cur=0; for(let j=0;j<4;j++) if(!document.getElementById('p'+j).hidden) cur=j;
+function setGame(g){ S.game=g; save(); try{document.getElementById('gsel').value=g;}catch(e){} shoe=[]; pos=0; rc=0; pending=[]; H=null; handInShoe=0;
+  let cur=0; for(let j=0;j<5;j++) if(!document.getElementById('p'+j).hidden) cur=j;
   tab(cur); }
 
 /* ================= DOUBLE ATTACK ================= */
@@ -388,8 +456,8 @@ function daDeal(visible){
   if(useShoe) return deal(visible);
   return gameCard();                       /* practice: random Spanish card */
 }
-function daScore(ok,want){ S.dec++; if(ok){S.decOK++;S.streak++;H.fb='\u2713 '+want;H.fbc='ok';}
-  else{S.streak=0;H.fb='\u2717 correct play: '+want;H.fbc='no';} save(); }
+function daScore(ok,want){ G().dec++; if(ok){G().decOK++;G().streak++;if(G().streak>G().best)G().best=G().streak;H.fb='\u2713 '+want;H.fbc='ok';}
+  else{G().streak=0;H.fb='\u2717 correct play: '+want;H.fbc='no';} save(); }
 
 function daNewHand(shoeMode){
   if(useShoe&&pending.length) revealHole();
@@ -398,7 +466,7 @@ function daNewHand(shoeMode){
   if(useShoe) handInShoe++;
   const tc=trueCount(), B=useShoe?daBet(tc):1;          /* bet before any card is dealt */
   const up=daDeal(true);
-  H={game:'da',phase:'attack',B,raised:false,up,hole:null,dealer:[up],hands:[],cur:0,
+  H={game:'da',phase:'attack',B,tc0:tc,raised:false,up,hole:null,dealer:[up],hands:[],cur:0,
      msg:'',msgc:'',fb:'',fbc:'',over:false,open:false};
   daRender();
 }
@@ -461,7 +529,7 @@ function daFinish(){
   daSettle(u, parts.join(' \u00b7 ')+(live?(dbust?' \u2014 dealer busts':' \u2014 dealer '+dt):''));
 }
 function daSettle(u,note){
-  H.over=true; H.phase='over'; S.hands++; S.units+=u; save();
+  H.over=true; H.phase='over'; G().hands++; G().units+=u; if(useShoe) recordShoeHand(u,H.B,H.tc0); save();
   H.msg=note+' \u2192 '+(u>=0?'+':'')+u.toFixed(1)+'u'; H.msgc='res'; daRender();
 }
 function daRender(){
@@ -483,7 +551,7 @@ function daRender(){
       <div class="btns"><button onclick="daAct('R')">SURRENDER</button>${daCanSplit(h)?`<button onclick="daAct('P')">SPLIT</button>`:''}</div>`; }
   else if(H.phase==='rescue') btns=`<div class="btns"><button onclick="daRescue(true)">SURRENDER</button><button onclick="daRescue(false)">STAND</button></div>
       <div class="mini" style="text-align:center">You doubled \u2014 stand, or surrender half the doubled bet?</div>`;
-  else btns=`<div class="row"><button onclick="newHand(${useShoe})">${cutOut?'Shuffle \u2014 new shoe':'Next hand'}</button></div>`;
+  else btns=cutOut?endShoeBox():`<div class="row"><button onclick="newHand(${useShoe})">Next hand</button></div>`;
   const stage=H.phase==='attack'?'Attack: raise up to your ante after seeing the upcard?':'';
   document.getElementById(p).innerHTML=`${banner}
    <div class="felt">
@@ -502,10 +570,10 @@ function daRender(){
    <div class="fb ${H.fbc||''}">${H.fb||'&nbsp;'}</div>
    ${H.msg?`<div class="fb ${H.msgc}">${H.msg}</div>`:''}
    <div class="card"><div class="stat">
-     <div><div class="k">Decisions</div><div class="v">${S.dec}</div></div>
-     <div><div class="k">Correct</div><div class="v">${S.dec?Math.round(100*S.decOK/S.dec):0}%</div></div>
-     <div><div class="k">Streak</div><div class="v">${S.streak}</div></div>
-     <div><div class="k">Units</div><div class="v">${S.units>=0?'+':''}${S.units.toFixed(1)}</div></div>
+     <div><div class="k">Decisions</div><div class="v">${G().dec}</div></div>
+     <div><div class="k">Correct</div><div class="v">${G().dec?Math.round(100*G().decOK/G().dec):0}%</div></div>
+     <div><div class="k">Streak</div><div class="v">${G().streak}</div></div>
+     <div><div class="k">Units</div><div class="v">${G().units>=0?'+':''}${G().units.toFixed(1)}</div></div>
    </div>
    <div class="row">
      ${useShoe?`<button class="ghost" onclick="toggleHide()">${S.hide?'Show count':'Hide count'}</button>
@@ -558,10 +626,16 @@ function charts(){
   for(let n=12;n<=19;n++)soft+=`<tr><th>${n===19?'19+':n}</th>`+
     reorder(DDM.soft[n-12]).split('').map(a=>`<td class="${a}">${a}</td>`).join('')+'</tr>';
   soft+='</table>';
+  const dv='<table><tr><th>Hand</th><th>vs</th><th>Play</th><th>Index</th></tr>'+
+    DDM_DEV.map(([k,v,u,a,i])=>`<tr><td>${k==='L'?'lone '+v:'hard '+v}</td><td>${u===1?'A':u}</td><td class="${a}">${ANAME[a]}</td><td>${i>0?'+':''}${i}</td></tr>`).join('')+'</table>';
   document.getElementById('p3').innerHTML=`
    <div class="card"><div class="lab">First card \u2014 you hold one</div>${one}</div>
    <div class="card"><div class="lab">Hard totals</div>${hard}</div>
    <div class="card"><div class="lab">Soft totals</div>${soft}</div>
+   <div class="card"><div class="lab">Top 10 deviations (Hi-Lo true count)</div>${dv}
+     <div class="mini">Double or stand at or above the index; below it, follow the chart. <b>Lone</b> = your single first card.
+     Rule of thumb: vs a dealer 6, double any lone 4\u20137 at TC \u2265 +1 (the 4 at 0); vs a 5, double a lone 2 at +1 and a lone 3 at +1.5.
+     The Shoe tab grades these. Worth most of DDM's ~18% deviation value.</div></div>
    <div class="card"><div class="mini">
      Charts verified cell-by-cell against Wizard of Odds.<br><br>
      <b>Count:</b> Hi-Lo \u2014 2\u20136 = +1, 7\u20139 = 0, 10\u2013A = \u22121. True count = running \u00f7 decks remaining.<br><br>
@@ -570,8 +644,109 @@ function charts(){
      <b>Reset stats:</b> <a href="#" onclick="if(confirm('Reset all stats?')){localStorage.removeItem('ap_trainer2');location.reload()}return false">tap here</a>
    </div></div>`;
 }
+/* ================= STATS ================= */
+const fmtU=x=>(x>=0?'+':'−')+Math.abs(x).toFixed(1);
+function niceStep(range){const r=range/4, p=Math.pow(10,Math.floor(Math.log10(r))), m=r/p;
+  return (m<1.5?1:m<3?2:m<7?5:10)*p;}
+function evChart(hist){
+  if(hist.length<2) return '<div class="mini">Play hands in the <b>Shoe</b> tab to build this chart. Practice hands aren’t included — they have no count or bet.</div>';
+  const pts=[[0,0,0,0]].concat(hist), n=pts.length, step=Math.max(1,Math.ceil(n/500));
+  const P=pts.filter((_,i)=>i%step===0||i===n-1);
+  const W=480,Hh=230,L=46,R=64,T=12,B=28, maxX=P[P.length-1][0]||1;
+  let lo=0,hi=0; for(const [x,a,e,v] of P){const sd=Math.sqrt(v); lo=Math.min(lo,a,e-sd); hi=Math.max(hi,a,e+sd);}
+  const st=niceStep(Math.max(hi-lo,1)); lo=Math.floor(lo/st)*st; hi=Math.ceil(hi/st)*st;
+  window._evr={lo,hi};
+  const X=x=>L+(W-L-R)*x/maxX, Y=y=>T+(Hh-T-B)*(hi-y)/(hi-lo);
+  let g='';
+  for(let y=lo;y<=hi+1e-9;y+=st) g+=`<line x1="${L}" x2="${W-R}" y1="${Y(y)}" y2="${Y(y)}" stroke="var(--grid)" stroke-width="${Math.abs(y)<1e-9?1.5:1}"/>
+    <text x="${L-6}" y="${Y(y)+4}" text-anchor="end" font-size="11" fill="var(--mut)">${y>0?'+':''}${+y.toFixed(1)}</text>`;
+  g+=`<text x="${L}" y="${Hh-8}" font-size="11" fill="var(--mut)">0</text>
+      <text x="${W-R}" y="${Hh-8}" text-anchor="end" font-size="11" fill="var(--mut)">${maxX.toLocaleString()} hands</text>`;
+  const up=P.map(p=>`${X(p[0]).toFixed(1)},${Y(p[2]+Math.sqrt(p[3])).toFixed(1)}`),
+        dn=P.slice().reverse().map(p=>`${X(p[0]).toFixed(1)},${Y(p[2]-Math.sqrt(p[3])).toFixed(1)}`);
+  const line=k=>P.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+','+Y(p[k]).toFixed(1)).join('');
+  const last=P[P.length-1]; let ya=Y(last[1]), ye=Y(last[2]);
+  if(Math.abs(ya-ye)<13){ if(ya<=ye){ya-=7;ye+=7;} else {ya+=7;ye-=7;} }
+  return `<div class="viz">
+    <div class="leg"><span><i class="sw"></i>Actual</span><span><i class="sw d"></i>Expected</span><span><i class="sw b"></i>±1 SD around expected</span></div>
+    <svg id="evsvg" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Cumulative actual versus expected units over shoe hands">
+      ${g}
+      <polygon points="${up.concat(dn).join(' ')}" fill="var(--s2)" opacity=".16"/>
+      <path d="${line(2)}" fill="none" stroke="var(--s2)" stroke-width="2" stroke-dasharray="5 4"/>
+      <path d="${line(1)}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round"/>
+      <text x="${X(last[0])+6}" y="${ya+4}" font-size="11" fill="var(--ink)">Actual</text>
+      <text x="${X(last[0])+6}" y="${ye+4}" font-size="11" fill="var(--mut)">Expected</text>
+      <g id="evhov" style="display:none"><line id="evx" y1="${T}" y2="${Hh-B}" stroke="var(--mut)" stroke-width="1"/>
+        <circle id="eva" r="4.5" fill="var(--s1)" stroke="var(--card)" stroke-width="2"/>
+        <circle id="eve" r="4.5" fill="var(--s2)" stroke="var(--card)" stroke-width="2"/></g>
+      <rect x="${L}" y="0" width="${W-L-R}" height="${Hh}" fill="transparent" id="evhit"/>
+    </svg><div class="tip" id="evtip">Touch or hover the chart for values</div></div>`;
+}
+function wireChart(hist){
+  const svg=document.getElementById('evsvg'); if(!svg) return;
+  const pts=[[0,0,0,0]].concat(hist), W=480,L=46,R=64,T=12,B=28,Hh=230, maxX=pts[pts.length-1][0]||1;
+  const box=svg.viewBox.baseVal, lo=window._evr.lo, hi=window._evr.hi;
+  const X=x=>L+(W-L-R)*x/maxX, Y=y=>T+(Hh-T-B)*(hi-y)/(hi-lo);
+  const move=ev=>{const r=svg.getBoundingClientRect(), vx=(ev.clientX-r.left)*box.width/r.width;
+    const hx=Math.max(0,Math.min(maxX,(vx-L)/(W-L-R)*maxX));
+    let best=pts[0]; for(const p of pts) if(Math.abs(p[0]-hx)<Math.abs(best[0]-hx)) best=p;
+    const hov=document.getElementById('evhov'); hov.style.display='';
+    document.getElementById('evx').setAttribute('x1',X(best[0])); document.getElementById('evx').setAttribute('x2',X(best[0]));
+    const a=document.getElementById('eva'), e=document.getElementById('eve');
+    a.setAttribute('cx',X(best[0])); a.setAttribute('cy',Y(best[1])); e.setAttribute('cx',X(best[0])); e.setAttribute('cy',Y(best[2]));
+    document.getElementById('evtip').textContent=`Hand ${best[0].toLocaleString()} · actual ${fmtU(best[1])}u · expected ${fmtU(best[2])}u · SD ±${Math.sqrt(best[3]).toFixed(1)}u`;};
+  svg.addEventListener('pointermove',move); svg.addEventListener('pointerdown',move);
+  svg.addEventListener('pointerleave',()=>{document.getElementById('evhov').style.display='none';});
+}
+function renderStats(){
+  const g=G(), m=GM(), sd=Math.sqrt(g.vr), z=sd>0?(g.shoeUnits-g.ev)/sd:0, pct=Math.min(100,100*g.shoeHands/m.n0);
+  const log=g.rcLog, nl=log.length, exact=log.filter(r=>r[1]===r[2]).length;
+  const acc=a=>a.length?Math.round(100*a.filter(r=>r[1]===r[2]).length/a.length)+'%':'–';
+  const miss=a=>a.length?(a.reduce((s,r)=>s+Math.abs(r[1]-r[2]),0)/a.length).toFixed(2):'–';
+  const last10=log.slice(-10), prev10=log.slice(-20,-10);
+  const rows=last10.slice().reverse().map(([n,y,a])=>`<tr><td>${n}</td><td>${y>0?'+':''}${y}</td><td>${a>0?'+':''}${a}</td>
+    <td class="${y===a?'good':'bad'}">${y===a?'✓':(y-a>0?'+':'')+(y-a)}</td></tr>`).join('');
+  document.getElementById('p4').innerHTML=`
+   <div class="card"><div class="lab">${m.name} — shoe play</div>
+     <div class="stat s3">
+       <div><div class="k">Shoes</div><div class="v">${g.shoes}</div></div>
+       <div><div class="k">Shoe hands</div><div class="v">${g.shoeHands.toLocaleString()}</div></div>
+       <div><div class="k">All hands</div><div class="v">${g.hands.toLocaleString()}</div></div></div>
+     <div class="mini" style="margin-top:10px">Shoe hands vs N₀ (${m.n0.toLocaleString()} for this game and ramp): <b>${pct.toFixed(1)}%</b></div>
+     <div class="bar"><i style="width:${pct}%"></i></div>
+     <div class="mini" style="margin-top:4px">At N₀ hands your expected win equals one standard deviation — about an 84% chance of being ahead.</div></div>
+   <div class="card"><div class="lab">Expected vs actual (shoe hands)</div>
+     <div class="stat s3">
+       <div><div class="k">Actual</div><div class="v">${fmtU(g.shoeUnits)}u</div></div>
+       <div><div class="k">Expected</div><div class="v">${fmtU(g.ev)}u</div></div>
+       <div><div class="k">Luck</div><div class="v">${sd>0?(z>=0?'+':'−')+Math.abs(z).toFixed(2)+' SD':'–'}</div></div></div>
+     <div style="margin-top:10px">${evChart(g.hist)}</div>
+     <div class="mini">Expected = your bet × this game’s edge at the true count when the bet went out (basic strategy), summed. Actual includes your mistakes, so a gap below the band can mean misplays as well as bad luck.</div></div>
+   <div class="card"><div class="lab">End-of-shoe running count</div>
+     <div class="stat s3">
+       <div><div class="k">Shoes logged</div><div class="v">${nl}</div></div>
+       <div><div class="k">Exact</div><div class="v">${acc(log)}</div></div>
+       <div><div class="k">Avg miss</div><div class="v">${miss(log)}</div></div></div>
+     <div class="stat s3" style="margin-top:6px">
+       <div><div class="k">Last 10 exact</div><div class="v">${acc(last10)}</div></div>
+       <div><div class="k">Previous 10</div><div class="v">${acc(prev10)}</div></div>
+       <div><div class="k">Last 10 avg miss</div><div class="v">${miss(last10)}</div></div></div>
+     ${nl?`<table class="log" style="margin-top:10px"><tr><th>Shoe</th><th>You</th><th>Actual</th><th>Result</th></tr>${rows}</table>`:
+       '<div class="mini" style="margin-top:8px">When the cut card comes out in the Shoe tab you’ll be asked for the final running count. Each answer is logged here.</div>'}</div>
+   <div class="card"><div class="lab">Decisions (${m.name})</div>
+     <div class="stat">
+       <div><div class="k">Decisions</div><div class="v">${g.dec}</div></div>
+       <div><div class="k">Correct</div><div class="v">${g.dec?Math.round(100*g.decOK/g.dec):0}%</div></div>
+       <div><div class="k">Streak</div><div class="v">${g.streak}</div></div>
+       <div><div class="k">Best</div><div class="v">${g.best}</div></div></div>
+     <div class="row"><button class="ghost" onclick="resetShoeStats()">Reset shoe stats for ${m.name}</button></div></div>`;
+  wireChart(g.hist);
+}
+function resetShoeStats(){ if(!confirm('Clear shoes, shoe hands, the EV chart and the count log for '+GM().name+'?'))return;
+  const g=G(); Object.assign(g,{shoes:0,shoeHands:0,shoeUnits:0,ev:0,vr:0,hist:[],rcLog:[]}); save(); renderStats(); }
 try{document.getElementById('gsel').value=GM().key;}catch(e){}
 tab(0);
+if('serviceWorker' in navigator && location.protocol!=='file:') navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
 </html>
