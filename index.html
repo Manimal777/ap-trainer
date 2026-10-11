@@ -94,7 +94,7 @@ td.good{color:var(--ok);font-weight:700} td.bad{color:var(--no);font-weight:700}
 </head>
 <body>
 <div class="wrap">
-<div class="top"><h1>AP TRAINER</h1><span class="mini"><select id="gsel" onchange="setGame(this.value)"><option value="ddm">Double Down Madness</option><option value="da">Double Attack</option></select> &middot; <b>v9</b></span></div>
+<div class="top"><h1>AP TRAINER</h1><span class="mini"><select id="gsel" onchange="setGame(this.value)"><option value="ddm">Double Down Madness</option><option value="da">Double Attack</option></select> &middot; <b>v12</b></span></div>
 <div class="tabs">
   <button id="t0" class="on" onclick="tab(0)">Play</button>
   <button id="t1" onclick="tab(1)">Count</button>
@@ -163,9 +163,10 @@ function correct(cards,up){
   let row = soft?DDM.soft[s-2]:DDM.hard[s-2];
   return row?row[up-1]:'S';
 }
-/* DDM top-10 deviations (Hi-Lo true count, at or above the index). L = lone first card, H = hard total */
-const DDM_DEV=[['L',4,6,'D',0],['L',5,6,'D',1],['L',7,6,'D',1],['L',2,5,'D',1],['L',6,6,'D',1.5],['L',3,5,'D',1.5],
-  ['H',10,1,'D',1.5],['H',12,4,'S',2.5],['H',8,4,'D',2.5],['L',8,4,'D',2.5]];
+/* DDM deviations (Hi-Lo true count, at or above the index; half-point indices rounded up to whole numbers).
+   L = lone first card only; A = any hard total (a lone card or several cards adding to it, never soft) */
+const DDM_DEV=[['A',4,6,'D',0],['A',5,6,'D',1],['A',7,6,'D',1],['L',2,5,'D',1],['A',6,6,'D',2],['L',3,5,'D',2],
+  ['A',10,1,'D',2],['A',12,4,'S',3],['A',8,4,'D',3]];
 function ddmCorrect(cards,up,tc){
   let a=correct(cards,up);
   if(!useShoe) return a;
@@ -173,7 +174,7 @@ function ddmCorrect(cards,up,tc){
   for(const [k,v,u,act,i] of DDM_DEV){
     if(u!==up||tc<i) continue;
     if(k==='L'&&lone&&cards[0]===v) a=act;
-    if(k==='H'&&!lone&&!soft&&t===v) a=act;
+    if(k==='A'&&!soft&&t===v) a=act;
   }
   return a;
 }
@@ -321,7 +322,7 @@ function act(a){
   if(H.forceAce){ H.p.push([1,rnd(4)]); H.forceAce=false; } else H.p.push(deal());
   H.fresh=true;
   const [t]=total(H.p.map(x=>x[0]));
-  if(t>21){finish();return;}
+  if(t>=21){finish();return;}   // bust, blackjack (paid at once) or 21: nothing left to decide
   if(lone_ace && a==='D'){finish();return;}   // doubling a lone ace: one card, stop
   render();
 }
@@ -656,7 +657,7 @@ function charts(){
     reorder(DDM.soft[n-12]).split('').map(a=>`<td class="${a}">${a}</td>`).join('')+'</tr>';
   soft+='</table>';
   const dv='<table><tr><th>Hand</th><th>vs</th><th>Play</th><th>Index</th></tr>'+
-    DDM_DEV.map(([k,v,u,a,i])=>`<tr><td>${k==='L'?'lone '+v:'hard '+v}</td><td>${u===1?'A':u}</td><td class="${a}">${ANAME[a]}</td><td>${i>0?'+':''}${i}</td></tr>`).join('')+'</table>';
+    DDM_DEV.map(([k,v,u,a,i])=>`<tr><td>${k==='L'?'lone '+v:'hard '+v+' (any cards)'}</td><td>${u===1?'A':u}</td><td class="${a}">${ANAME[a]}</td><td>${i>0?'+':''}${i}</td></tr>`).join('')+'</table>';
   document.getElementById('p3').innerHTML=`
    <div class="card"><div class="lab">First card \u2014 you hold one</div>${one}</div>
    <div class="card"><div class="lab">Hard totals</div>${hard}</div>
