@@ -94,7 +94,7 @@ td.good{color:var(--ok);font-weight:700} td.bad{color:var(--no);font-weight:700}
 </head>
 <body>
 <div class="wrap">
-<div class="top"><h1>AP TRAINER</h1><span class="mini"><select id="gsel" onchange="setGame(this.value)"><option value="ddm">Double Down Madness</option><option value="da">Double Attack</option></select> &middot; <b>v8</b></span></div>
+<div class="top"><h1>AP TRAINER</h1><span class="mini"><select id="gsel" onchange="setGame(this.value)"><option value="ddm">Double Down Madness</option><option value="da">Double Attack</option></select> &middot; <b>v9</b></span></div>
 <div class="tabs">
   <button id="t0" class="on" onclick="tab(0)">Play</button>
   <button id="t1" onclick="tab(1)">Count</button>
@@ -111,9 +111,13 @@ const NAME=[,'A','2','3','4','5','6','7','8','9','10'];
 const HILO=[0,-1,1,1,1,1,1,0,0,0,-1];
 const DA_TAGS=[0,-1,1,2,2,2,2,0,-1,-1,-2];
 const GAMES={
-  ddm:{key:'ddm',name:'Double Down Madness',decks:6,spanish:false,div:52,tags:HILO,count:'Hi-Lo',n0:20378,sd:1.8,
-       edge:tc=>{const T=[[-3,-4.20],[-2,-3.20],[-1,-1.92],[0,-0.75],[1,0.29],[2,1.57]];
-         if(tc<=-3) return -4.20+1.0*(tc+3); if(tc>=2) return 1.57+1.4*(tc-2);
+  ddm:{key:'ddm',name:'Double Down Madness',decks:6,spanish:false,div:52,tags:HILO,count:'Hi-Lo',n0:31852,sd:1.68,
+       /* flat edge (%) by Hi-Lo true count, top-10 deviations, rebuilt engine (Oct 2026, 73M rounds).
+          Depends only on the count, so it is the same whether you leave bad shoes or play through.
+          n0 = 1-2-4-6 playing every hand (31,852); with the leave-at-TC<=-3 rule it would be 14,517. */
+       edge:tc=>{const T=[[-8,-10.21],[-7,-9.36],[-6,-8.07],[-5,-7.03],[-4,-5.67],[-3,-4.43],[-2,-3.16],[-1,-1.98],[0,-0.86],
+                          [1,0.34],[2,1.40],[3,2.61],[4,4.16],[5,5.37],[6,6.39],[7,7.89],[8,9.09],[9,10.30],[10,10.90]];
+         if(tc<=-8) return -10.21+1.1*(tc+8); if(tc>=10) return 10.90+1.15*(tc-10);
          for(let i=0;i<T.length-1;i++) if(tc<=T[i+1][0]){const [a,x]=T[i],[b,y]=T[i+1];return x+(y-x)*(tc-a)/(b-a);} },
        legend:'2\u20136 = +1 &nbsp;\u00b7&nbsp; 7,8,9 = 0 &nbsp;\u00b7&nbsp; 10\u2013A = \u22121'},
   da:{key:'da',name:'Double Attack',decks:8,spanish:true,div:48,tags:DA_TAGS,count:'Double Attack L2',n0:19000,sd:1.8,
@@ -195,6 +199,26 @@ function deal(visible){
   return c;
 }
 function revealHole(){ while(pending.length) rc+=GM().tags[pending.pop()]; }
+/* ---- dealer reveal animation: hole card flips, then each draw card appears one at a time ----
+   Settlement and stats are recorded immediately; only the display is paced. */
+let RVtok=0; const RV_HOLE=550, RV_STEP=650;
+function startReveal(draw){
+  H.anim=true; H.shown=1; const tok=++RVtok, me=H; draw();
+  const step=()=>{ if(tok!==RVtok||H!==me) return;
+    H.shown++; H.fresh=false; H.dfresh=H.shown-1;
+    if(H.shown>=H.dealer.length){ H.anim=false; draw(); H.dfresh=-1; return; }
+    draw(); setTimeout(step,RV_STEP); };
+  setTimeout(step,RV_HOLE);
+}
+/* running count as the player can see it: excludes dealer cards not yet turned over */
+function rcShown(){ if(!H||!H.anim) return rc; let r=rc;
+  for(let i=H.shown;i<H.dealer.length;i++) r-=GM().tags[H.dealer[i][0]]; return r; }
+function tcShown(){ return useShoe?rcShown()/decksRounded():0; }
+function dealerCardsHTML(lab){        /* lab: use the card's own label (Spanish deck) */
+  const n=H.anim?H.shown:H.dealer.length;
+  return H.dealer.map((c,i)=> i<n ? cardHTML(c[0],c[1],false,i===H.dfresh,lab?c[2]:undefined)
+                                   : (i===1?cardHTML(0,0,true):'')).join('');
+}
 function decksLeft(){return useShoe?Math.max((shoe.length-pos)/GM().div,0.25):0;}
 function decksRounded(){return Math.max(Math.round(decksLeft()*2)/2,0.5);}
 function trueCount(){return useShoe?rc/decksRounded():0;}
@@ -203,6 +227,7 @@ function betFor(tc){return tc>=3?6:tc>=2?4:tc>=1?2:1;}
 /* ---- hand state ---- */
 let H=null;
 function newHand(shoeMode){
+  RVtok++;
   if(S.game==='da') return daNewHand(shoeMode);
   if(useShoe && pending.length) revealHole();   // never strand a hole card
   useShoe=shoeMode;
@@ -219,7 +244,7 @@ function newHand(shoeMode){
   H.dbj = (up[0]===1&&hole[0]===10)||(up[0]===10&&hole[0]===1);
   // dealer peeks on a ten or ace: blackjack ends the hand immediately
   if(H.dbj){ revealHole(); H.over=true; if(!(!useShoe && S.soft)){ G().hands++; G().units+=-1*H.bet; if(useShoe) recordShoeHand(-H.bet,H.bet,H.tc0); } save();
-    H.msg='Dealer blackjack \u2014 LOSE '+(-1*H.bet).toFixed(1)+'u'; H.msgc='res'; render(); return; }
+    H.msg='Dealer blackjack \u2014 LOSE '+(-1*H.bet).toFixed(1)+'u'; H.msgc='res'; startReveal(render); return; }
   render();
 }
 function render(){
@@ -228,7 +253,7 @@ function render(){
   const [t,soft]=total(H.p.map(c=>c[0]));
   const one=H.p.length===1;
   const lone_ace = one && H.p[0][0]===1;
-  const tc=trueCount();
+  const tc=tcShown(), rcv=rcShown();
   const cutOut = useShoe && cutReached();
   let banner='';
   if(useShoe && handInShoe===1 && !H.over) banner='<div class="banner new">NEW SHOE \u2014 running count starts at 0</div>';
@@ -237,31 +262,31 @@ function render(){
   document.getElementById(p).innerHTML=`${banner}
    <div class="felt">
      <div class="lab">Dealer</div>
-     <div class="cards">${cardHTML(H.dealer[0][0],H.dealer[0][1])}${
-        H.over?H.dealer.slice(1).map((c,i)=>cardHTML(c[0],c[1],false,true)).join(''):cardHTML(0,0,true)}</div>
-     ${H.over?`<div class="tot">${dealerText()}</div>`:''}
+     <div class="cards">${H.over?dealerCardsHTML(false):cardHTML(H.dealer[0][0],H.dealer[0][1])+cardHTML(0,0,true)}</div>
+     ${H.over&&!H.anim?`<div class="tot">${dealerText()}</div>`:''}
      <div class="lab" style="margin-top:14px">You</div>
      <div class="cards">${H.p.map((c,i)=>cardHTML(c[0],c[1],false,i===H.p.length-1&&H.fresh)).join('')}</div>
      <div class="tot">${one?'first card':(soft?'soft ':'hard ')+t}${t>21?' \u2014 BUST':''}</div>
      <div class="wag">wager ${H.wager}${useShoe?' \u00d7 '+H.bet+'u':''}</div>
      ${useShoe?`<div class="cnt">
-       <span>RC <b>${S.hide?'\u2013':rc}</b></span>
+       <span>RC <b>${S.hide?'\u2013':rcv}</b></span>
        <span>decks <b>${decksRounded().toFixed(1)}</b></span>
        <span>TC <b>${S.hide?'\u2013':(tc>=0?'+':'')+tc.toFixed(1)}</b></span>
        <span>bet <b>${S.hide?'?':betFor(tc)+'u'}</b></span></div>`:''}
    </div>
-   ${H.over?(cutOut?endShoeBox():`<div class="row"><button onclick="newHand(${useShoe})">Next hand</button></div>`):
+   ${H.anim?`<div class="mini" style="text-align:center;margin:10px 0">dealer\u2019s turn\u2026</div>`:H.over?(cutOut?endShoeBox():`<div class="row"><button onclick="newHand(${useShoe})">Next hand</button></div>`):
     `<div class="btns">
       <button onclick="act('H')" ${lone_ace?'':''}>HIT</button>
       <button onclick="act('D')">DOUBLE</button>
       <button onclick="act('S')" ${one?'disabled':''}>STAND</button>
     </div>`}
-   <div class="fb ${H.msgc}">${H.msg||'&nbsp;'}</div>
+   ${H.lastFb?`<div class="fb ${H.lastFbc}">${H.lastFb}</div>`:''}
+   <div class="fb ${H.anim?'':H.msgc}">${H.anim?'&nbsp;':(H.msg||'&nbsp;')}</div>
    <div class="card"><div class="stat">
      <div><div class="k">Decisions</div><div class="v">${G().dec}</div></div>
      <div><div class="k">Correct</div><div class="v">${G().dec?Math.round(100*G().decOK/G().dec):0}%</div></div>
      <div><div class="k">Streak</div><div class="v">${G().streak}</div></div>
-     <div><div class="k">Units</div><div class="v">${G().units>=0?'+':''}${G().units.toFixed(1)}</div></div>
+     <div><div class="k">Units</div><div class="v">${H.anim?'\u2026':(G().units>=0?'+':'')+G().units.toFixed(1)}</div></div>
    </div>
    <div class="row">
      ${useShoe?`<button class="ghost" onclick="toggleHide()">${S.hide?'Show count':'Hide count'}</button>
@@ -276,6 +301,7 @@ function render(){
   H.fresh=false;
 }
 function dealerText(){
+  if(H.dbj) return 'dealer blackjack';
   let s=0,ace=false;
   H.dealer.forEach(c=>{s+=c[0];if(c[0]===1)ace=true;});
   const t=(ace&&s+10<=21)?s+10:s;
@@ -328,8 +354,9 @@ function settle(u,note){
   if(!(!useShoe && S.soft)){ G().hands++; G().units+=u*mult; if(useShoe) recordShoeHand(u*mult,H.bet,H.tc0); }
   save();
   const w = u>0?'WIN':(u<0?'LOSE':'PUSH');
+  if(H.msg&&H.msgc!=='res'){ H.lastFb=H.msg; H.lastFbc=H.msgc; }
   H.msg=`${note?note+' \u2014 ':''}${w} ${u>0?'+':''}${(u*mult).toFixed(1)}u`;
-  H.msgc='res'; render();
+  H.msgc='res'; startReveal(render);
 }
 /* ---- end of shoe: enter the final running count before shuffling ---- */
 function endShoeBox(){
@@ -363,8 +390,9 @@ function checkCount(){
 }
 function cChk(){
   const v=parseInt(document.getElementById('cin').value,10),fb=document.getElementById('cfb');
-  if(v===rc){fb.className='fb ok';fb.textContent=`Correct \u2014 RC ${rc}, TC ${trueCount().toFixed(1)}, bet ${betFor(trueCount())}u`;}
-  else{fb.className='fb no';fb.textContent=`No \u2014 RC is ${rc} (TC ${trueCount().toFixed(1)})`;}
+  const r=rcShown(), t=tcShown();
+  if(v===r){fb.className='fb ok';fb.textContent=`Correct \u2014 RC ${r}, TC ${t.toFixed(1)}, bet ${(S.game==='da'?daBet:betFor)(t)}u`;}
+  else{fb.className='fb no';fb.textContent=`No \u2014 RC is ${r} (TC ${t.toFixed(1)})`;}
 }
 
 /* ---- COUNT DRILL ---- */
@@ -530,14 +558,15 @@ function daFinish(){
 }
 function daSettle(u,note){
   H.over=true; H.phase='over'; G().hands++; G().units+=u; if(useShoe) recordShoeHand(u,H.B,H.tc0); save();
-  H.msg=note+' \u2192 '+(u>=0?'+':'')+u.toFixed(1)+'u'; H.msgc='res'; daRender();
+  H.msg=note+' \u2192 '+(u>=0?'+':'')+u.toFixed(1)+'u'; H.msgc='res';
+  if(H.dealer.length>1) startReveal(daRender); else daRender();
 }
 function daRender(){
-  const p=useShoe?'p2':'p0', tc=trueCount(), cutOut=useShoe&&cutReached();
+  const p=useShoe?'p2':'p0', tc=tcShown(), rcv=rcShown(), cutOut=useShoe&&cutReached();
   let banner='';
   if(useShoe&&handInShoe===1&&!H.over) banner='<div class="banner new">NEW SHOE \u2014 running count starts at 0</div>';
   else if(cutOut) banner='<div class="banner cut">CUT CARD OUT \u2014 last hand of this shoe</div>';
-  const dcards=H.open?H.dealer.map(c=>cardHTML(c[0],c[1],false,false,c[2])).join('')
+  const dcards=H.open?dealerCardsHTML(true)
                      :cardHTML(H.up[0],H.up[1],false,false,H.up[2])+(H.hole?cardHTML(0,0,true):'');
   let hands='';
   H.hands.forEach((h,i)=>{ const [t,soft]=daTotal(h.c);
@@ -551,24 +580,24 @@ function daRender(){
       <div class="btns"><button onclick="daAct('R')">SURRENDER</button>${daCanSplit(h)?`<button onclick="daAct('P')">SPLIT</button>`:''}</div>`; }
   else if(H.phase==='rescue') btns=`<div class="btns"><button onclick="daRescue(true)">SURRENDER</button><button onclick="daRescue(false)">STAND</button></div>
       <div class="mini" style="text-align:center">You doubled \u2014 stand, or surrender half the doubled bet?</div>`;
-  else btns=cutOut?endShoeBox():`<div class="row"><button onclick="newHand(${useShoe})">Next hand</button></div>`;
+  else btns=H.anim?`<div class="mini" style="text-align:center;margin:10px 0">dealer\u2019s turn\u2026</div>`:cutOut?endShoeBox():`<div class="row"><button onclick="newHand(${useShoe})">Next hand</button></div>`;
   const stage=H.phase==='attack'?'Attack: raise up to your ante after seeing the upcard?':'';
   document.getElementById(p).innerHTML=`${banner}
    <div class="felt">
-     <div class="lab">Dealer${H.open?' ('+daTotal(H.dealer)[0]+')':''}</div>
+     <div class="lab">Dealer${H.open&&!H.anim?' ('+daTotal(H.dealer)[0]+')':''}</div>
      <div class="cards">${dcards}</div>
      <div class="lab" style="margin-top:14px">You</div>
      ${hands||`<div class="mini">${stage}</div>`}
      <div class="wag">ante ${H.B}u${H.raised?' + raise '+H.B+'u':''}</div>
      ${useShoe?`<div class="cnt">
-       <span>RC <b>${S.hide?'\u2013':rc}</b></span>
+       <span>RC <b>${S.hide?'\u2013':rcv}</b></span>
        <span>decks <b>${decksRounded().toFixed(1)}</b></span>
        <span>TC <b>${S.hide?'\u2013':(tc>=0?'+':'')+tc.toFixed(1)}</b></span>
        <span>bet <b>${S.hide?'?':daBet(tc)+'u'}</b></span></div>`:''}
    </div>
    ${btns}
    <div class="fb ${H.fbc||''}">${H.fb||'&nbsp;'}</div>
-   ${H.msg?`<div class="fb ${H.msgc}">${H.msg}</div>`:''}
+   ${H.msg&&!H.anim?`<div class="fb ${H.msgc}">${H.msg}</div>`:''}
    <div class="card"><div class="stat">
      <div><div class="k">Decisions</div><div class="v">${G().dec}</div></div>
      <div><div class="k">Correct</div><div class="v">${G().dec?Math.round(100*G().decOK/G().dec):0}%</div></div>
@@ -712,7 +741,7 @@ function renderStats(){
        <div><div class="k">Shoes</div><div class="v">${g.shoes}</div></div>
        <div><div class="k">Shoe hands</div><div class="v">${g.shoeHands.toLocaleString()}</div></div>
        <div><div class="k">All hands</div><div class="v">${g.hands.toLocaleString()}</div></div></div>
-     <div class="mini" style="margin-top:10px">Shoe hands vs N₀ (${m.n0.toLocaleString()} for this game and ramp): <b>${pct.toFixed(1)}%</b></div>
+     <div class="mini" style="margin-top:10px">Shoe hands vs N₀ (${m.n0.toLocaleString()} for this game and ramp, playing every hand): <b>${pct.toFixed(1)}%</b></div>
      <div class="bar"><i style="width:${pct}%"></i></div>
      <div class="mini" style="margin-top:4px">At N₀ hands your expected win equals one standard deviation — about an 84% chance of being ahead.</div></div>
    <div class="card"><div class="lab">Expected vs actual (shoe hands)</div>
