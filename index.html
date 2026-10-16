@@ -94,7 +94,7 @@ td.good{color:var(--ok);font-weight:700} td.bad{color:var(--no);font-weight:700}
 </head>
 <body>
 <div class="wrap">
-<div class="top"><h1>AP TRAINER</h1><span class="mini"><select id="gsel" onchange="setGame(this.value)"><option value="ddm">Double Down Madness</option><option value="da">Double Attack</option></select> &middot; <b>v10</b></span></div>
+<div class="top"><h1>AP TRAINER</h1><span class="mini"><select id="gsel" onchange="setGame(this.value)"><option value="ddm">Double Down Madness</option><option value="da">Double Attack</option></select> &middot; <b>v11</b></span></div>
 <div class="tabs">
   <button id="t0" class="on" onclick="tab(0)">Play</button>
   <button id="t1" onclick="tab(1)">Count</button>
@@ -167,14 +167,19 @@ function correct(cards,up){
    L = lone first card only; A = any hard total (a lone card or several cards adding to it, never soft) */
 const DDM_DEV=[['A',4,6,'D',0],['A',5,6,'D',1],['A',7,6,'D',1],['L',2,5,'D',1],['A',6,6,'D',2],['L',3,5,'D',2],
   ['A',10,1,'D',2],['A',12,4,'S',3],['A',8,4,'D',3]];
+/* next 10 by value (S = soft total with 2+ cards) */
+const DDM_DEV2=[['A',12,3,'S',4],['A',7,5,'D',3],['A',16,10,'S',6],['A',13,2,'S',4],['A',4,5,'D',3],['A',5,5,'D',4],
+  ['A',6,5,'D',5],['L',2,4,'D',4],['A',8,3,'D',6],['S',19,6,'D',4]];
 function ddmCorrect(cards,up,tc){
   let a=correct(cards,up);
   if(!useShoe) return a;
   const [t,soft]=total(cards), lone=cards.length===1;
-  for(const [k,v,u,act,i] of DDM_DEV){
+  const devs=S.dev20===false?DDM_DEV:DDM_DEV.concat(DDM_DEV2);
+  for(const [k,v,u,act,i] of devs){
     if(u!==up||tc<i) continue;
     if(k==='L'&&lone&&cards[0]===v) a=act;
     if(k==='A'&&!soft&&t===v) a=act;
+    if(k==='S'&&!lone&&soft&&t===v) a=act;
   }
   return a;
 }
@@ -291,6 +296,7 @@ function render(){
    </div>
    <div class="row">
      ${useShoe?`<button class="ghost" onclick="toggleHide()">${S.hide?'Show count':'Hide count'}</button>
+       <button class="ghost" onclick="toggleDev20()">Deviations: ${S.dev20===false?'top 10':'top 20'}</button>
        <button class="ghost" onclick="resetShoe()">Reset shoe</button>`:
        `<button class="ghost" onclick="toggleSoft()">Soft drill: ${S.soft?'ON':'OFF'}</button>`}
      <button class="ghost" onclick="resetStats()">Reset stats</button>
@@ -379,6 +385,7 @@ function submitShoeRC(){
 }
 function toggleHide(){ S.hide=!S.hide; save(); if(H) render(); }
 function toggleSoft(){ S.soft=!S.soft; save(); newHand(false); }
+function toggleDev20(){ S.dev20=(S.dev20===false); save(); if(H) render(); }
 function resetShoe(){ if(!confirm('Shuffle a fresh shoe? The count resets to 0.'))return;
   newShoe(); H=null; newHand(true); }
 function resetStats(){ if(!confirm('Reset decisions, accuracy, streak and units?'))return;
@@ -656,16 +663,22 @@ function charts(){
   for(let n=12;n<=19;n++)soft+=`<tr><th>${n===19?'19+':n}</th>`+
     reorder(DDM.soft[n-12]).split('').map(a=>`<td class="${a}">${a}</td>`).join('')+'</tr>';
   soft+='</table>';
+  const dlab=(k,v)=>k==='L'?'lone '+v:k==='S'?'soft '+v:(v>=12?'hard '+v:'hard '+v+' (any cards)');
+  const drow=([k,v,u,a,i])=>`<tr><td>${dlab(k,v)}</td><td>${u===1?'A':u}</td><td class="${a}">${ANAME[a]}</td><td>${i>0?'+':''}${i}</td></tr>`;
   const dv='<table><tr><th>Hand</th><th>vs</th><th>Play</th><th>Index</th></tr>'+
-    DDM_DEV.map(([k,v,u,a,i])=>`<tr><td>${k==='L'?'lone '+v:'hard '+v+' (any cards)'}</td><td>${u===1?'A':u}</td><td class="${a}">${ANAME[a]}</td><td>${i>0?'+':''}${i}</td></tr>`).join('')+'</table>';
+    DDM_DEV.map(drow).join('')+'<tr><td>insurance</td><td>A</td><td>Take</td><td>+3</td></tr></table>';
+  const dv2='<table><tr><th>Hand</th><th>vs</th><th>Play</th><th>Index</th></tr>'+DDM_DEV2.map(drow).join('')+'</table>';
   document.getElementById('p3').innerHTML=`
    <div class="card"><div class="lab">First card \u2014 you hold one</div>${one}</div>
    <div class="card"><div class="lab">Hard totals</div>${hard}</div>
    <div class="card"><div class="lab">Soft totals</div>${soft}</div>
-   <div class="card"><div class="lab">Top 10 deviations (Hi-Lo true count)</div>${dv}
-     <div class="mini">Double or stand at or above the index; below it, follow the chart. <b>Lone</b> = your single first card.
-     Rule of thumb: vs a dealer 6, double any lone 4\u20137 at TC \u2265 +1 (the 4 at 0); vs a 5, double a lone 2 at +1 and a lone 3 at +1.5.
-     The Shoe tab grades these. Worth most of DDM's ~18% deviation value.</div></div>
+   <div class="card"><div class="lab">Top 10 plays (Hi-Lo true count)</div>${dv}
+     <div class="mini">Double or stand at or above the index; below it, follow the chart. <b>Lone</b> = your single first card only; <b>any cards</b> = a single card or several cards adding to that hard total (never soft).
+     Rule of thumb: vs a dealer 6, double any hard 4\u20138 at TC \u2265 +1 (the 4 at 0, the 6 waits for +2); vs a 5, double a lone 2 at +1 and a lone 3 at +2.
+     Insurance at +3 is worth more than any single play (~0.16 u/100); insure half your bet. The Shoe tab grades the nine playing decisions, not insurance. Worth most of DDM's ~18% deviation value.</div></div>
+   <div class="card"><div class="lab">Next 10 plays (Hi-Lo true count)</div>${dv2}
+     <div class="mini">Ranked by value; together worth about +0.25 u/100 on a 1-2-4-8 ramp from +2. Rule of thumb vs a 5: double hard 4 and 7 at +3, 5 at +4, 6 at +5.
+     The Shoe tab grades these too while <b>Deviations: top 20</b> is on (${S.dev20===false?'currently off':'currently on'}); switch to top 10 there to drill only the first set.</div></div>
    <div class="card"><div class="mini">
      Charts verified cell-by-cell against Wizard of Odds.<br><br>
      <b>Count:</b> Hi-Lo \u2014 2\u20136 = +1, 7\u20139 = 0, 10\u2013A = \u22121. True count = running \u00f7 decks remaining.<br><br>
